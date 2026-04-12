@@ -1,4 +1,4 @@
-# 行简（XJ Todo）
+# 行简（EasyStep-Do）
 
 行简是一个桌面端待办应用，基于 **Tauri 2 + React + TypeScript** 构建。  
 它强调「快速记录、按日期归档、可视化整理、桌面原生体验」。
