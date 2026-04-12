@@ -1,0 +1,203 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #e7edf5;
+  --foreground: #202a38;
+  --card: #ffffff;
+  --card-foreground: #202a38;
+  --muted: #eef3f9;
+  --muted-foreground: #66748a;
+  --border: #d2dce8;
+}
+
+.dark {
+  --background: #121a26;
+  --foreground: #eaf1ff;
+  --card: #1a2433;
+  --card-foreground: #eaf1ff;
+  --muted: #202c3d;
+  --muted-foreground: #92a2bc;
+  --border: #314055;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0) 280px),
+    var(--background);
+  color: var(--foreground);
+  font-family:
+    Inter,
+    'SF Pro Display',
+    'SF Pro Text',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.28), transparent 36%),
+    linear-gradient(180deg, rgba(71, 85, 115, 0.25) 0%, rgba(71, 85, 115, 0) 280px),
+    var(--background);
+}
+
+#root {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.markdown-scrollbar,
+.panel-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted-foreground) 36%, transparent) transparent;
+}
+
+.markdown-scrollbar::-webkit-scrollbar,
+.panel-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.markdown-scrollbar::-webkit-scrollbar-track,
+.panel-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.markdown-scrollbar::-webkit-scrollbar-thumb,
+.panel-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+  background: color-mix(in srgb, var(--muted-foreground) 32%, transparent);
+}
+
+.markdown-scrollbar:hover::-webkit-scrollbar-thumb,
+.panel-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 46%, transparent);
+}
+
+.panel-scrollbar {
+  scrollbar-color: color-mix(in srgb, var(--muted-foreground) 24%, transparent) transparent;
+}
+
+.panel-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.panel-scrollbar::-webkit-scrollbar-thumb {
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--muted-foreground) 22%, transparent);
+}
+
+.panel-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 34%, transparent);
+}
+
+.todo-markdown {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.todo-markdown p,
+.todo-markdown ul,
+.todo-markdown ol,
+.todo-markdown pre,
+.todo-markdown blockquote {
+  margin: 0.45rem 0;
+}
+
+.todo-markdown ul,
+.todo-markdown ol {
+  padding-left: 1.15rem;
+}
+
+.todo-markdown pre {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--muted) 78%, transparent);
+  padding: 0.6rem;
+}
+
+.todo-markdown h1,
+.todo-markdown h2,
+.todo-markdown h3,
+.todo-markdown h4 {
+  margin: 0.65rem 0 0.4rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.todo-markdown h1 {
+  font-size: 1.1rem;
+}
+
+.todo-markdown h2 {
+  font-size: 1rem;
+}
+
+.todo-markdown h3,
+.todo-markdown h4 {
+  font-size: 0.92rem;
+}
+
+.todo-markdown blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--foreground) 28%, transparent);
+  padding-left: 0.7rem;
+  color: color-mix(in srgb, var(--foreground) 74%, var(--muted-foreground));
+}
+
+.todo-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.55rem 0;
+  font-size: 0.86rem;
+}
+
+.todo-markdown th,
+.todo-markdown td {
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.45rem;
+  text-align: left;
+}
+
+.todo-markdown th {
+  background: color-mix(in srgb, var(--muted) 68%, transparent);
+  font-weight: 600;
+}
+
+.todo-markdown :not(pre) > code {
+  border-radius: 0.35rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+  padding: 0.05rem 0.3rem;
+}
+
+.todo-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  font-size: 0.85em;
+}
