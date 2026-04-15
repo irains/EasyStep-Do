@@ -1,11 +1,11 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "行简",
-  "version": "1.0.0",
-  "identifier": "cn.rainss.xjtodo",
+  "productName": "EasyStepDo",
+  "version": "1.0.1",
+  "identifier": "cn.rainss.easystepdo",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:5173",
+    "devUrl": "http://localhost:5180",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },

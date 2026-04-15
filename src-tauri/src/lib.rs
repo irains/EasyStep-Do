@@ -36,7 +36,11 @@ fn open_external_url(url: String) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
-    .plugin(tauri_plugin_autostart::Builder::new().build())
+    .plugin(
+      tauri_plugin_autostart::Builder::new()
+        .arg("--autostart")
+        .build(),
+    )
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -49,6 +53,13 @@ pub fn run() {
       let app_state = initialize_state(app.handle())
         .map_err(|error| std::io::Error::new(std::io::ErrorKind::Other, error))?;
       app.manage(app_state);
+
+      let launched_from_autostart = std::env::args().any(|arg| arg == "--autostart");
+      if launched_from_autostart {
+        if let Some(window) = app.get_webview_window("main") {
+          let _ = window.hide();
+        }
+      }
 
       let show_item = MenuItemBuilder::with_id(MENU_SHOW, "显示主窗口").build(app)?;
       let autostart_enabled = app.autolaunch().is_enabled().unwrap_or(false);

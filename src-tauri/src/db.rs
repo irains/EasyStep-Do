@@ -7,16 +7,28 @@ use tauri::{AppHandle, Manager};
 
 pub const ORDER_STEP: f64 = 1024.0;
 
+const PORTABLE_MARKER_FILE: &str = "easystepdo-portable.flag";
+
 pub fn init_database(app: &AppHandle) -> Result<PathBuf, String> {
-  let app_data_dir = app
-    .path()
-    .app_data_dir()
-    .map_err(|error| format!("无法获取应用数据目录: {error}"))?;
+  let app_data_db_path = resolve_app_data_db_path(app)?;
+  let primary_db_path = resolve_primary_db_path(&app_data_db_path);
 
-  fs::create_dir_all(&app_data_dir).map_err(|error| format!("无法创建应用数据目录: {error}"))?;
+  let (db_path, mut connection) = match open_database(&primary_db_path) {
+    Ok(connection) => (primary_db_path, connection),
+    Err(primary_error) => {
+      if primary_db_path == app_data_db_path {
+        return Err(primary_error);
+      }
 
-  let db_path = app_data_dir.join("todos.db");
-  let mut connection = connect(&db_path)?;
+      let fallback_connection = open_database(&app_data_db_path).map_err(|fallback_error| {
+        format!(
+          "安装目录数据库初始化失败后回退 AppData 仍失败: {fallback_error}（原始错误: {primary_error}）"
+        )
+      })?;
+
+      (app_data_db_path.clone(), fallback_connection)
+    }
+  };
 
   connection
     .execute_batch(
@@ -42,6 +54,72 @@ pub fn init_database(app: &AppHandle) -> Result<PathBuf, String> {
   ensure_sort_order_values(&mut connection)?;
 
   Ok(db_path)
+}
+
+fn resolve_app_data_db_path(app: &AppHandle) -> Result<PathBuf, String> {
+  let app_data_dir = app
+    .path()
+    .app_data_dir()
+    .map_err(|error| format!("无法获取应用数据目录: {error}"))?;
+
+  Ok(app_data_dir.join("todos.db"))
+}
+
+fn resolve_primary_db_path(app_data_db_path: &Path) -> PathBuf {
+  #[cfg(target_os = "windows")]
+  {
+    if cfg!(debug_assertions) || is_portable_mode() {
+      return app_data_db_path.to_path_buf();
+    }
+
+    if let Some(install_db_path) = resolve_install_db_path() {
+      return install_db_path;
+    }
+
+    app_data_db_path.to_path_buf()
+  }
+
+  #[cfg(not(target_os = "windows"))]
+  {
+    app_data_db_path.to_path_buf()
+  }
+}
+
+#[cfg(target_os = "windows")]
+fn resolve_install_db_path() -> Option<PathBuf> {
+  let exe_path = std::env::current_exe().ok()?;
+  let exe_dir = exe_path.parent()?;
+  Some(exe_dir.join("data").join("todos.db"))
+}
+
+#[cfg(target_os = "windows")]
+fn is_portable_mode() -> bool {
+  let exe_path = match std::env::current_exe() {
+    Ok(path) => path,
+    Err(_) => return false,
+  };
+
+  let exe_dir = match exe_path.parent() {
+    Some(path) => path,
+    None => return false,
+  };
+
+  exe_dir.join(PORTABLE_MARKER_FILE).is_file()
+}
+
+fn open_database(db_path: &Path) -> Result<Connection, String> {
+  let parent_dir = db_path
+    .parent()
+    .ok_or_else(|| format!("数据库路径无父目录: {}", db_path.display()))?;
+
+  fs::create_dir_all(parent_dir).map_err(|error| {
+    format!(
+      "无法创建数据库目录({}): {error}",
+      parent_dir.display()
+    )
+  })?;
+
+  connect(db_path)
 }
 
 pub fn connect(db_path: &Path) -> Result<Connection, String> {

@@ -68,8 +68,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path src-tauri/target/release/bundle/portable | Out-Null
-          Copy-Item src-tauri/target/release/app.exe src-tauri/target/release/行简.exe -Force
-          Compress-Archive -Path src-tauri/target/release/行简.exe -DestinationPath src-tauri/target/release/bundle/portable/行简-portable-windows-x64.zip -Force
+          Copy-Item src-tauri/target/release/app.exe src-tauri/target/release/EasyStepDo.exe -Force
+          New-Item -ItemType File -Force -Path src-tauri/target/release/easystepdo-portable.flag | Out-Null
+          Compress-Archive -Path src-tauri/target/release/EasyStepDo.exe,src-tauri/target/release/easystepdo-portable.flag -DestinationPath src-tauri/target/release/bundle/portable/EasyStepDo-portable-windows-x64.zip -Force
 
       - name: Upload Windows artifacts
         if: matrix.platform.name == 'windows'
