@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "EasyStepDo",
-  "version": "1.0.1",
+  "productName": "行简",
+  "version": "1.0.3",
   "identifier": "cn.rainss.easystepdo",
   "build": {
     "frontendDist": "../dist",
