@@ -22,6 +22,14 @@ const MENU_SHOW: &str = "show";
 const MENU_AUTOSTART: &str = "autostart";
 const MENU_QUIT: &str = "quit";
 
+fn show_main_window(app: &tauri::AppHandle) {
+  if let Some(window) = app.get_webview_window("main") {
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+  }
+}
+
 #[tauri::command]
 fn open_external_url(url: String) -> Result<(), String> {
   if !(url.starts_with("http://") || url.starts_with("https://")) {
@@ -36,6 +44,9 @@ fn open_external_url(url: String) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+      show_main_window(app);
+    }))
     .plugin(
       tauri_plugin_autostart::Builder::new()
         .arg("--autostart")
@@ -82,10 +93,7 @@ pub fn run() {
             ..
           } = event
           {
-            if let Some(window) = tray.app_handle().get_webview_window("main") {
-              let _ = window.show();
-              let _ = window.set_focus();
-            }
+            show_main_window(tray.app_handle());
           }
         })
         .tooltip("行简")
@@ -101,10 +109,7 @@ pub fn run() {
     })
     .on_menu_event(|app, event| match event.id().as_ref() {
       MENU_SHOW => {
-        if let Some(window) = app.get_webview_window("main") {
-          let _ = window.show();
-          let _ = window.set_focus();
-        }
+        show_main_window(app);
       }
       MENU_AUTOSTART => {
         let next_enabled = !app.autolaunch().is_enabled().unwrap_or(false);

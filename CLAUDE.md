@@ -39,6 +39,7 @@ Run from repository root.
 - Entry: `src-tauri/src/main.rs` → `app_lib::run()` in `src-tauri/src/lib.rs`.
 - `run()` wires:
   - `tauri-plugin-autostart`
+  - `tauri-plugin-single-instance` (re-launch activates existing instance)
   - optional dev logging plugin (`tauri-plugin-log` in debug)
   - tray icon + tray menu
   - window event handling (close hides window to tray)
