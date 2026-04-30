@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { setTheme } from '@tauri-apps/api/app'
+import { useTheme } from 'next-themes'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeSanitize from 'rehype-sanitize'
@@ -63,25 +65,27 @@ function App() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [showComposerDetail, setShowComposerDetail] = useState(false)
   const [activeFilter, setActiveFilter] = useState<TodoFilter>('all')
-  const [scope, setScope] = useState<'selected' | 'allDates'>('selected')
-  const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(new Date()))
+  const [scope, setScope] = useState<'all' | 'week' | 'date'>('all')
+  const [composeDate, setComposeDate] = useState(() => formatLocalDate(new Date()))
   const [visibleMonth, setVisibleMonth] = useState(() => monthStart(new Date()))
   const [now, setNow] = useState(() => new Date())
+  const lastDateStrRef = useRef(formatLocalDate(new Date()))
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  const queryDate = useMemo(() => {
-    if (scope === 'allDates') {
-      return undefined
-    }
-    return selectedDate
-  }, [scope, selectedDate])
+  const { resolvedTheme } = useTheme()
 
-  const loadTodos = async (date?: string) => {
+  useEffect(() => {
+    if (resolvedTheme) {
+      setTheme(resolvedTheme === 'dark' ? 'dark' : 'light').catch(() => {})
+    }
+  }, [resolvedTheme])
+
+  const loadTodos = async () => {
     setLoading(true)
     setError('')
     try {
-      const data = await listTodos(date)
+      const data = await listTodos()
       setTodos(data)
       setExpandedTodoId((prev) => (prev && data.some((todo) => todo.id === prev) ? prev : null))
       setEditingTodoId((prev) => (prev && data.some((todo) => todo.id === prev) ? prev : null))
@@ -94,8 +98,8 @@ function App() {
   }
 
   useEffect(() => {
-    void loadTodos(queryDate)
-  }, [queryDate])
+    void loadTodos()
+  }, [])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -104,23 +108,46 @@ function App() {
     return () => window.clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    const todayStr = formatLocalDate(now)
+    if (todayStr !== lastDateStrRef.current) {
+      const oldToday = lastDateStrRef.current
+      lastDateStrRef.current = todayStr
+      if (composeDate === oldToday) {
+        setComposeDate(todayStr)
+        setVisibleMonth(monthStart(now))
+      }
+    }
+  }, [now, composeDate])
+
+  const scopedTodos = useMemo(() => {
+    if (scope === 'all') {
+      return todos
+    }
+    if (scope === 'date') {
+      return todos.filter((todo) => todo.journal_date === composeDate)
+    }
+    const [weekStart, weekEnd] = getWeekRange(now)
+    return todos.filter((todo) => todo.journal_date >= weekStart && todo.journal_date <= weekEnd)
+  }, [scope, todos, now, composeDate])
+
   const filteredTodos = useMemo(() => {
     if (activeFilter === 'active') {
-      return todos.filter((todo) => !todo.completed)
+      return scopedTodos.filter((todo) => !todo.completed)
     }
     if (activeFilter === 'completed') {
-      return todos.filter((todo) => todo.completed)
+      return scopedTodos.filter((todo) => todo.completed)
     }
-    return todos
-  }, [activeFilter, todos])
+    return scopedTodos
+  }, [activeFilter, scopedTodos])
 
   const stats = useMemo(() => {
-    const total = todos.length
-    const completed = todos.filter((todo) => todo.completed).length
+    const total = scopedTodos.length
+    const completed = scopedTodos.filter((todo) => todo.completed).length
     const active = total - completed
     const rate = total === 0 ? 0 : Math.round((completed / total) * 100)
     return { total, active, completed, rate }
-  }, [todos])
+  }, [scopedTodos])
 
   const calendarDays = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth])
   const editingTodo = useMemo(
@@ -145,7 +172,7 @@ function App() {
       setTitle('')
       setDetailMd('')
       setShowComposerDetail(false)
-      await loadTodos(queryDate)
+      await loadTodos()
     } catch (e) {
       setError(String(e))
     } finally {
@@ -158,7 +185,7 @@ function App() {
     setError('')
     try {
       await toggleTodo(id)
-      await loadTodos(queryDate)
+      await loadTodos()
     } catch (e) {
       setError(String(e))
     } finally {
@@ -180,7 +207,7 @@ function App() {
         setEditTitle('')
         setEditDetailMd('')
       }
-      await loadTodos(queryDate)
+      await loadTodos()
     } catch (e) {
       setError(String(e))
     } finally {
@@ -222,7 +249,7 @@ function App() {
       setEditDetailMd('')
     } catch (e) {
       setError(String(e))
-      await loadTodos(queryDate)
+      await loadTodos()
     } finally {
       setSavingEdit(false)
     }
@@ -259,10 +286,10 @@ function App() {
 
     try {
       await reorderTodo({ moved_id: movedId, prev_id: prevId, next_id: nextId }, composeDate)
-      await loadTodos(queryDate)
+      await loadTodos()
     } catch (e) {
       setError(String(e))
-      await loadTodos(queryDate)
+      await loadTodos()
     }
   }
 
@@ -313,11 +340,9 @@ function App() {
     return '晚上'
   }, [now])
 
-  const isAllDatesScope = scope === 'allDates'
-  const composeDate = selectedDate
-  const canReorder = !isAllDatesScope
-  const scopeTextClass = isAllDatesScope ? 'text-violet-500 dark:text-violet-400' : 'text-sky-500 dark:text-sky-400'
-  const reorderTextClass = canReorder ? 'text-emerald-500 dark:text-emerald-400' : 'text-amber-500 dark:text-amber-400'
+  const scopeLabel = scope === 'all' ? '全部任务' : scope === 'week' ? '本周任务' : '按日期'
+  const canReorder = scope === 'date'
+  const scopeTextClass = scope === 'all' ? 'text-sky-500 dark:text-sky-400' : scope === 'week' ? 'text-violet-500 dark:text-violet-400' : 'text-amber-500 dark:text-amber-400'
   const progressTextClass =
     stats.rate === 100
       ? 'text-emerald-500 dark:text-emerald-400'
@@ -419,11 +444,14 @@ function App() {
 
 
               <div className="mt-2 grid gap-1">
-                <SidebarButton active={scope === 'selected'} onClick={() => setScope('selected')}>
-                  按日期
-                </SidebarButton>
-                <SidebarButton active={scope === 'allDates'} onClick={() => setScope('allDates')}>
+                <SidebarButton active={scope === 'all'} onClick={() => setScope('all')}>
                   全部任务
+                </SidebarButton>
+                <SidebarButton active={scope === 'week'} onClick={() => setScope('week')}>
+                  本周任务
+                </SidebarButton>
+                <SidebarButton active={scope === 'date'} onClick={() => setScope('date')}>
+                  按日期
                 </SidebarButton>
               </div>
             </CardHeader>
@@ -466,17 +494,17 @@ function App() {
                       key={day.key}
                       type="button"
                       onClick={() => {
-                        setScope('selected')
-                        setSelectedDate(day.key)
+                        setScope('date')
+                        setComposeDate(day.key)
                         setVisibleMonth(monthStart(day.date))
                       }}
                       className={`h-6 rounded text-[10px] transition-colors ${
-                        day.key === selectedDate
+                        day.key === composeDate
                           ? 'bg-foreground text-background'
                           : day.inCurrentMonth
                             ? 'hover:bg-muted'
                             : 'text-muted-foreground/50 hover:bg-muted/70'
-                      } ${day.isToday && day.key !== selectedDate ? 'ring-1 ring-foreground/35' : ''}`}
+                      } ${day.isToday && day.key !== composeDate ? 'ring-1 ring-foreground/35' : ''}`}
                     >
                       {day.date.getDate()}
                     </button>
@@ -490,15 +518,11 @@ function App() {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/55 px-2 py-1">
                       <span>视图模式</span>
-                      <span className={`font-medium ${scopeTextClass}`}>{isAllDatesScope ? '全部任务' : '按日期'}</span>
+                      <span className={`font-medium ${scopeTextClass}`}>{scopeLabel}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/55 px-2 py-1">
-                      <span>当前归档</span>
-                      <span className="font-medium text-foreground">{isAllDatesScope ? '跨日期' : selectedDate}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/55 px-2 py-1">
-                      <span>排序能力</span>
-                      <span className={`font-medium ${reorderTextClass}`}>{canReorder ? '可拖拽' : '已禁用'}</span>
+                      <span>新增日期</span>
+                      <span className="font-medium text-foreground">{composeDate === formatLocalDate(now) ? '今天' : composeDate}</span>
                     </div>
                     <div className="rounded-md border border-border/60 bg-background/55 px-2 py-1">
                       <div className="mb-1 flex items-center justify-between">
@@ -537,7 +561,7 @@ function App() {
                     标题必填，详情可选（支持 Markdown）
                   </span>
                 </div>
-                <p className="shrink-0 text-xs text-muted-foreground">{composeDate}</p>
+                <p className="shrink-0 text-xs text-muted-foreground">{composeDate === formatLocalDate(now) ? `今天 ${composeDate.slice(5)}` : composeDate}</p>
               </div>
 
               <form
@@ -713,16 +737,16 @@ function TodoRow({
         isDragging ? 'shadow-md' : 'hover:bg-muted/40'
       }`}
     >
-      <div className="px-2.5 py-2">
-        <div className="flex min-w-0 items-start gap-1.5">
+      <div className="px-2.5 py-1.5">
+        <div className="flex min-w-0 items-center gap-2">
           <div
             {...(canReorder && !rowDisabled && !editing ? attributes : {})}
             {...(canReorder && !rowDisabled && !editing ? listeners : {})}
-            className={`flex min-w-0 flex-1 items-start gap-1.5 ${
+            className={`flex min-w-0 flex-1 items-center gap-2.5 ${
               canReorder && !rowDisabled && !editing ? 'cursor-grab active:cursor-grabbing' : ''
             }`}
           >
-            <label className="mt-0.5 shrink-0 rounded-md p-0">
+            <label className="shrink-0">
               <input
                 type="checkbox"
                 checked={todo.completed}
@@ -732,7 +756,7 @@ function TodoRow({
               />
             </label>
 
-            <div className="min-w-0 flex-1 pl-1">
+            <div className="min-w-0 flex-1">
               <button
                 type="button"
                 className="w-full min-w-0 text-left"
@@ -743,6 +767,9 @@ function TodoRow({
                   {todo.title}
                 </p>
                 <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+                  <span className="shrink-0 rounded border border-border/40 bg-muted/25 px-1.5 py-px text-[10px] tabular-nums text-muted-foreground/80 [font-variant-numeric:tabular-nums]">
+                    {todo.journal_date}
+                  </span>
                   {todo.detail_md ? (
                     <span
                       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium transition-colors ${
@@ -894,6 +921,14 @@ function monthStart(date: Date) {
 
 function shiftMonth(date: Date, delta: number) {
   return new Date(date.getFullYear(), date.getMonth() + delta, 1)
+}
+
+function getWeekRange(date: Date): [string, string] {
+  const day = date.getDay()
+  const mondayOffset = day === 0 ? -6 : 1 - day
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate() + mondayOffset)
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6)
+  return [formatLocalDate(monday), formatLocalDate(sunday)]
 }
 
 function buildCalendarDays(visibleMonth: Date): CalendarDay[] {
