@@ -7,28 +7,23 @@ use tauri::{AppHandle, Manager};
 
 pub const ORDER_STEP: f64 = 1024.0;
 
-const PORTABLE_MARKER_FILE: &str = "easystepdo-portable.flag";
-
 pub fn init_database(app: &AppHandle) -> Result<PathBuf, String> {
-  let app_data_db_path = resolve_app_data_db_path(app)?;
-  let primary_db_path = resolve_primary_db_path(&app_data_db_path);
+  let db_path = resolve_app_data_db_path(app)?;
 
-  let (db_path, mut connection) = match open_database(&primary_db_path) {
-    Ok(connection) => (primary_db_path, connection),
-    Err(primary_error) => {
-      if primary_db_path == app_data_db_path {
-        return Err(primary_error);
-      }
+  // 迁移旧安装目录数据库到 AppData
+  migrate_legacy_install_dir_db(&db_path)?;
 
-      let fallback_connection = open_database(&app_data_db_path).map_err(|fallback_error| {
-        format!(
-          "安装目录数据库初始化失败后回退 AppData 仍失败: {fallback_error}（原始错误: {primary_error}）"
-        )
-      })?;
+  let parent_dir = db_path
+    .parent()
+    .ok_or_else(|| format!("数据库路径无父目录: {}", db_path.display()))?;
+  fs::create_dir_all(parent_dir).map_err(|error| {
+    format!(
+      "无法创建数据库目录({}): {error}",
+      parent_dir.display()
+    )
+  })?;
 
-      (app_data_db_path.clone(), fallback_connection)
-    }
-  };
+  let mut connection = connect(&db_path)?;
 
   connection
     .execute_batch(
@@ -52,6 +47,7 @@ pub fn init_database(app: &AppHandle) -> Result<PathBuf, String> {
   ensure_detail_md_column(&connection)?;
   ensure_journal_date_values(&mut connection)?;
   ensure_sort_order_values(&mut connection)?;
+  ensure_sync_tables(&connection)?;
 
   Ok(db_path)
 }
@@ -63,63 +59,6 @@ fn resolve_app_data_db_path(app: &AppHandle) -> Result<PathBuf, String> {
     .map_err(|error| format!("无法获取应用数据目录: {error}"))?;
 
   Ok(app_data_dir.join("todos.db"))
-}
-
-fn resolve_primary_db_path(app_data_db_path: &Path) -> PathBuf {
-  #[cfg(target_os = "windows")]
-  {
-    if cfg!(debug_assertions) || is_portable_mode() {
-      return app_data_db_path.to_path_buf();
-    }
-
-    if let Some(install_db_path) = resolve_install_db_path() {
-      return install_db_path;
-    }
-
-    app_data_db_path.to_path_buf()
-  }
-
-  #[cfg(not(target_os = "windows"))]
-  {
-    app_data_db_path.to_path_buf()
-  }
-}
-
-#[cfg(target_os = "windows")]
-fn resolve_install_db_path() -> Option<PathBuf> {
-  let exe_path = std::env::current_exe().ok()?;
-  let exe_dir = exe_path.parent()?;
-  Some(exe_dir.join("data").join("todos.db"))
-}
-
-#[cfg(target_os = "windows")]
-fn is_portable_mode() -> bool {
-  let exe_path = match std::env::current_exe() {
-    Ok(path) => path,
-    Err(_) => return false,
-  };
-
-  let exe_dir = match exe_path.parent() {
-    Some(path) => path,
-    None => return false,
-  };
-
-  exe_dir.join(PORTABLE_MARKER_FILE).is_file()
-}
-
-fn open_database(db_path: &Path) -> Result<Connection, String> {
-  let parent_dir = db_path
-    .parent()
-    .ok_or_else(|| format!("数据库路径无父目录: {}", db_path.display()))?;
-
-  fs::create_dir_all(parent_dir).map_err(|error| {
-    format!(
-      "无法创建数据库目录({}): {error}",
-      parent_dir.display()
-    )
-  })?;
-
-  connect(db_path)
 }
 
 pub fn connect(db_path: &Path) -> Result<Connection, String> {
@@ -369,6 +308,107 @@ fn ensure_sort_order_values(connection: &mut Connection) -> Result<(), String> {
   transaction
     .commit()
     .map_err(|error| format!("提交迁移事务失败: {error}"))?;
+
+  Ok(())
+}
+
+fn migrate_legacy_install_dir_db(app_data_db_path: &Path) -> Result<(), String> {
+  let exe_path = match std::env::current_exe() {
+    Ok(path) => path,
+    Err(_) => return Ok(()),
+  };
+  let exe_dir = match exe_path.parent() {
+    Some(dir) => dir,
+    None => return Ok(()),
+  };
+  let legacy_path = exe_dir.join("data").join("todos.db");
+
+  if !legacy_path.is_file() {
+    return Ok(());
+  }
+
+  // AppData 下已有数据则跳过
+  if app_data_db_path.is_file() {
+    if let Ok(conn) = Connection::open(app_data_db_path) {
+      let count: i64 = conn.query_row("SELECT COUNT(*) FROM todos", [], |row| row.get(0)).unwrap_or(-1);
+      if count != 0 {
+        return Ok(());
+      }
+    }
+  }
+
+  if let Some(parent) = app_data_db_path.parent() {
+    let _ = fs::create_dir_all(parent);
+  }
+
+  fs::copy(&legacy_path, app_data_db_path).map_err(|error| {
+    format!(
+      "迁移旧版数据库失败({} -> {}): {error}",
+      legacy_path.display(),
+      app_data_db_path.display()
+    )
+  })?;
+
+  Ok(())
+}
+
+pub fn ensure_sync_tables(connection: &Connection) -> Result<(), String> {
+  connection
+    .execute_batch(
+      "
+      CREATE TABLE IF NOT EXISTS sync_config (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        server_url TEXT NOT NULL DEFAULT '',
+        username TEXT NOT NULL DEFAULT '',
+        password TEXT NOT NULL DEFAULT '',
+        remote_dir TEXT NOT NULL DEFAULT '/easystep-do/',
+        auth_method TEXT NOT NULL DEFAULT 'auto',
+        timeout_secs INTEGER NOT NULL DEFAULT 30,
+        auto_sync_enabled INTEGER NOT NULL DEFAULT 0,
+        auto_sync_interval_mins INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS sync_meta (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        device_id TEXT NOT NULL DEFAULT '',
+        last_sync_time TEXT NOT NULL DEFAULT '',
+        remote_etag TEXT NOT NULL DEFAULT ''
+      );
+
+      CREATE TABLE IF NOT EXISTS deleted_records (
+        id TEXT PRIMARY KEY,
+        deleted_at TEXT NOT NULL,
+        device_id TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS sync_history (
+        id TEXT PRIMARY KEY,
+        sync_time TEXT NOT NULL,
+        direction TEXT NOT NULL,
+        status TEXT NOT NULL,
+        message TEXT NOT NULL DEFAULT '',
+        local_updated INTEGER NOT NULL DEFAULT 0,
+        remote_updated INTEGER NOT NULL DEFAULT 0,
+        local_deleted INTEGER NOT NULL DEFAULT 0,
+        remote_deleted INTEGER NOT NULL DEFAULT 0,
+        duration_ms INTEGER NOT NULL DEFAULT 0
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sync_history_time ON sync_history(sync_time);
+      ",
+    )
+    .map_err(|error| format!("初始化同步表失败: {error}"))?;
+
+  let count: i64 = connection
+    .query_row("SELECT COUNT(*) FROM sync_meta", [], |row| row.get(0))
+    .map_err(|e| format!("检查同步元数据失败: {e}"))?;
+
+  if count == 0 {
+    let device_id = uuid::Uuid::new_v4().to_string();
+    connection
+      .execute("INSERT INTO sync_meta (device_id) VALUES (?1)", rusqlite::params![&device_id])
+      .map_err(|e| format!("写入设备标识失败: {e}"))?;
+  }
 
   Ok(())
 }

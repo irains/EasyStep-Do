@@ -9,6 +9,7 @@ const MIN_ORDER_GAP: f64 = 0.0001;
 
 pub struct AppState {
   pub db_path: std::path::PathBuf,
+  pub device_id: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -245,13 +246,29 @@ pub fn update_todo(
 #[tauri::command(rename_all = "snake_case")]
 pub fn delete_todo(id: String, state: State<'_, AppState>) -> Result<(), String> {
   let connection = db::connect(&state.db_path)?;
-  let affected_rows = connection
-    .execute("DELETE FROM todos WHERE id = ?1", params![&id])
-    .map_err(|error| format!("删除待办失败: {error}"))?;
 
-  if affected_rows == 0 {
+  let exists: bool = connection
+    .query_row("SELECT COUNT(*) FROM todos WHERE id = ?1", params![&id], |row| {
+      row.get::<_, i64>(0)
+    })
+    .map_err(|error| format!("查询待办失败: {error}"))?
+    > 0;
+
+  if !exists {
     return Err("待办不存在".to_string());
   }
+
+  let now = Utc::now().to_rfc3339();
+  connection
+    .execute(
+      "INSERT OR IGNORE INTO deleted_records (id, deleted_at, device_id) VALUES (?1, ?2, ?3)",
+      params![&id, &now, &state.device_id],
+    )
+    .map_err(|error| format!("记录删除标记失败: {error}"))?;
+
+  connection
+    .execute("DELETE FROM todos WHERE id = ?1", params![&id])
+    .map_err(|error| format!("删除待办失败: {error}"))?;
 
   Ok(())
 }
@@ -370,5 +387,9 @@ fn resolve_journal_date(input: Option<String>) -> Result<String, String> {
 
 pub fn initialize_state(app: &AppHandle) -> Result<AppState, String> {
   let db_path = db::init_database(app)?;
-  Ok(AppState { db_path })
+  let connection = db::connect(&db_path)?;
+  let device_id: String = connection
+    .query_row("SELECT device_id FROM sync_meta WHERE id = 1", [], |row| row.get(0))
+    .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string());
+  Ok(AppState { db_path, device_id })
 }

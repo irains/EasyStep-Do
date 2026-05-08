@@ -1,0 +1,111 @@
+{
+  "app": {
+    "name": "EasyStep",
+    "subtitle": "Tasks & Calendar",
+    "description": "Pick a date on the left, manage tasks on the right"
+  },
+  "scope": {
+    "all": "All Tasks",
+    "week": "This Week",
+    "date": "By Date"
+  },
+  "context": {
+    "title": "Current Context",
+    "viewMode": "View Mode",
+    "addDate": "New Task Date",
+    "today": "Today",
+    "progress": "Progress"
+  },
+  "tips": {
+    "title": "Quick Tips",
+    "expand": "• Click a task title to expand or collapse details.",
+    "markdown": "• Markdown supports Ctrl/Cmd + B, Ctrl/Cmd + I."
+  },
+  "time": {
+    "dawn": "Dawn",
+    "morning": "AM",
+    "noon": "Noon",
+    "afternoon": "PM",
+    "evening": "Eve"
+  },
+  "week": {
+    "mon": "Mo", "tue": "Tu", "wed": "We", "thu": "Th", "fri": "Fr", "sat": "Sa", "sun": "Su"
+  },
+  "composer": {
+    "title": "Quick Add Task",
+    "hint": "Title required, details optional (Markdown)",
+    "placeholder": "Enter title and press Enter or click Add",
+    "add": "Add",
+    "adding": "Adding...",
+    "toggleDetail": "Add details (optional)",
+    "collapseDetail": "Collapse detail editor",
+    "dateHint": "Select date from calendar on the left",
+    "detailPlaceholder": "Details (optional, Markdown supported)"
+  },
+  "todo": {
+    "list": "Task List",
+    "all": "All",
+    "active": "Active",
+    "completed": "Done",
+    "loading": "Loading...",
+    "empty": "No tasks in this scope/filter.",
+    "expanded": "Expanded",
+    "expandable": "Expand",
+    "noDetail": "No details",
+    "noContent": "No details yet. Click edit to add.",
+    "titleRequired": "Please enter a task title",
+    "editTitle": "Task title",
+    "edit": "Edit Task",
+    "closeEdit": "Close edit",
+    "deleteTask": "Delete task",
+    "confirmDelete": "Confirm Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving..."
+  },
+  "settings": {
+    "title": "Settings",
+    "sync": {
+      "title": "WebDAV Sync Settings",
+      "serverUrl": "Server URL",
+      "serverPlaceholder": "https://dav.jianguo.com/dav/",
+      "username": "Username",
+      "password": "Password",
+      "passwordPlaceholder": "Password or app-specific password",
+      "remoteDir": "Remote Directory",
+      "authMethod": "Auth Method",
+      "authAuto": "Auto Detect",
+      "timeout": "Timeout (seconds)",
+      "testConnection": "Test Connection",
+      "saveConfig": "Save Config",
+      "syncNow": "Sync Now",
+      "testSuccess": "Connected, detected auth method: {{method}}",
+      "configSaved": "Configuration saved",
+      "autoSync": "Auto Sync",
+      "autoSyncEnabled": "Enable auto sync",
+      "autoSyncInterval": "Sync interval (minutes)"
+    },
+    "theme": {
+      "title": "Theme",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "language": {
+      "title": "Language",
+      "zh": "中文",
+      "en": "English"
+    }
+  },
+  "syncStatus": {
+    "title": "Sync Status",
+    "notSynced": "Not synced",
+    "updated": "{{count}} updated",
+    "history": "Sync History"
+  },
+  "providers": {
+    "jianguo": "Jianguoyun",
+    "nextcloud": "Nextcloud",
+    "synology": "Synology"
+  }
+}

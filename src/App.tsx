@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { setTheme } from '@tauri-apps/api/app'
 import { useTheme } from 'next-themes'
+import { useTranslation } from 'react-i18next'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeSanitize from 'rehype-sanitize'
@@ -20,7 +21,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileText, Sparkles, Trash2, X } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileText, Settings, Sparkles, Trash2, X } from 'lucide-react'
 
 import {
   addTodo,
@@ -33,8 +34,12 @@ import {
   type Todo,
   type TodoFilter,
 } from '@/api/todo'
+import { invoke } from '@tauri-apps/api/core'
+import { getSyncConfig } from '@/api/sync'
 import { MarkdownEditor } from '@/components/markdown-editor'
 import { ModeToggle } from '@/components/mode-toggle'
+import { SettingsPanel } from '@/components/settings-panel'
+import { SyncStatus } from '@/components/sync-status'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -47,7 +52,7 @@ type CalendarDay = {
   isToday: boolean
 }
 
-const WEEK_LABELS = ['一', '二', '三', '四', '五', '六', '日']
+const WEEK_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
 function App() {
   const [todos, setTodos] = useState<Todo[]>([])
@@ -63,6 +68,7 @@ function App() {
   const [editTitle, setEditTitle] = useState('')
   const [editDetailMd, setEditDetailMd] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+  const [syncSettingsOpen, setSyncSettingsOpen] = useState(false)
   const [showComposerDetail, setShowComposerDetail] = useState(false)
   const [activeFilter, setActiveFilter] = useState<TodoFilter>('all')
   const [scope, setScope] = useState<'all' | 'week' | 'date'>('all')
@@ -74,6 +80,7 @@ function App() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const { resolvedTheme } = useTheme()
+  const { t, i18n } = useTranslation()
 
   useEffect(() => {
     if (resolvedTheme) {
@@ -81,7 +88,12 @@ function App() {
     }
   }, [resolvedTheme])
 
-  const loadTodos = async () => {
+  // Sync tray language on mount
+  useEffect(() => {
+    invoke('update_tray_language', { lang: i18n.language }).catch(() => {})
+  }, [i18n.language])
+
+  const loadTodos = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -95,11 +107,38 @@ function App() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     void loadTodos()
-  }, [])
+  }, [loadTodos])
+
+  // Auto-sync timer
+  const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startAutoSync = useCallback(async () => {
+    if (syncTimerRef.current) {
+      clearInterval(syncTimerRef.current)
+      syncTimerRef.current = null
+    }
+    try {
+      const cfg = await getSyncConfig()
+      if (cfg?.auto_sync_enabled && cfg.auto_sync_interval_mins > 0) {
+        syncTimerRef.current = setInterval(() => {
+          void loadTodos()
+        }, cfg.auto_sync_interval_mins * 60 * 1000)
+      }
+    } catch {
+      // ignore
+    }
+  }, [loadTodos])
+
+  useEffect(() => {
+    void startAutoSync()
+    return () => {
+      if (syncTimerRef.current) clearInterval(syncTimerRef.current)
+    }
+  }, [startAutoSync])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -158,7 +197,7 @@ function App() {
   const handleSubmit = async () => {
     const nextTitle = title.trim()
     if (!nextTitle) {
-      setError('请输入待办标题')
+      setError(t('todo.titleRequired'))
       return
     }
 
@@ -235,7 +274,7 @@ function App() {
 
     const nextTitle = editTitle.trim()
     if (!nextTitle) {
-      setError('请输入待办标题')
+      setError(t('todo.titleRequired'))
       return
     }
 
@@ -293,54 +332,56 @@ function App() {
     }
   }
 
+  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US'
+
   const monthLabel = useMemo(
     () =>
-      new Intl.DateTimeFormat('zh-CN', {
+      new Intl.DateTimeFormat(locale, {
         year: 'numeric',
         month: 'long',
       }).format(visibleMonth),
-    [visibleMonth],
+    [visibleMonth, locale],
   )
 
   const nowDateLabel = useMemo(
     () =>
-      new Intl.DateTimeFormat('zh-CN', {
+      new Intl.DateTimeFormat(locale, {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
       }).format(now),
-    [now],
+    [now, locale],
   )
 
   const nowWeekdayLabel = useMemo(
     () =>
-      new Intl.DateTimeFormat('zh-CN', {
+      new Intl.DateTimeFormat(locale, {
         weekday: 'short',
       }).format(now),
-    [now],
+    [now, locale],
   )
 
   const nowTimeLabel = useMemo(
     () =>
-      new Intl.DateTimeFormat('zh-CN', {
+      new Intl.DateTimeFormat(locale, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
         hour12: false,
       }).format(now),
-    [now],
+    [now, locale],
   )
 
   const nowPeriodLabel = useMemo(() => {
     const hour = now.getHours()
-    if (hour < 6) return '凌晨'
-    if (hour < 12) return '上午'
-    if (hour < 14) return '中午'
-    if (hour < 18) return '下午'
-    return '晚上'
-  }, [now])
+    if (hour < 6) return t('time.dawn')
+    if (hour < 12) return t('time.morning')
+    if (hour < 14) return t('time.noon')
+    if (hour < 18) return t('time.afternoon')
+    return t('time.evening')
+  }, [now, t])
 
-  const scopeLabel = scope === 'all' ? '全部任务' : scope === 'week' ? '本周任务' : '按日期'
+  const scopeLabel = scope === 'all' ? t('scope.all') : scope === 'week' ? t('scope.week') : t('scope.date')
   const canReorder = scope === 'date'
   const scopeTextClass = scope === 'all' ? 'text-sky-500 dark:text-sky-400' : scope === 'week' ? 'text-violet-500 dark:text-violet-400' : 'text-amber-500 dark:text-amber-400'
   const progressTextClass =
@@ -362,12 +403,13 @@ function App() {
 
   return (
     <main className="h-screen overflow-hidden p-2 lg:p-4">
+      <SettingsPanel open={syncSettingsOpen} onClose={() => setSyncSettingsOpen(false)} onSynced={() => void loadTodos()} />
       {editingTodo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[1px]">
           <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-border/80 bg-card/98 shadow-[0_18px_48px_rgba(0,0,0,0.22)]">
             <div className="flex items-center justify-between border-b border-border/70 bg-muted/20 px-3 py-2">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">编辑任务</p>
+                <p className="truncate text-sm font-semibold text-foreground">{t('todo.edit')}</p>
                 <p className="truncate text-[11px] text-muted-foreground">{editingTodo.title}</p>
               </div>
               <Button
@@ -377,8 +419,8 @@ function App() {
                 onClick={handleCancelEdit}
                 disabled={savingEdit}
                 className="size-7"
-                aria-label="关闭编辑"
-                title="关闭编辑"
+                aria-label={t('todo.closeEdit')}
+                title={t('todo.closeEdit')}
               >
                 <X className="size-4" />
               </Button>
@@ -387,22 +429,22 @@ function App() {
               <Input
                 value={editTitle}
                 onChange={(event) => setEditTitle(event.target.value)}
-                placeholder="任务标题"
+                placeholder={t('todo.editTitle')}
                 maxLength={200}
                 disabled={savingEdit}
               />
               <MarkdownEditor
                 value={editDetailMd}
                 onChange={setEditDetailMd}
-                placeholder="详细内容（可选，支持 Markdown）"
+                placeholder={t('composer.detailPlaceholder')}
                 disabled={savingEdit}
               />
               <div className="flex justify-end gap-1.5 border-t border-border/65 pt-2">
                 <Button type="button" variant="ghost" size="sm" onClick={handleCancelEdit} disabled={savingEdit}>
-                  取消
+                  {t('todo.cancel')}
                 </Button>
                 <Button type="button" size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
-                  {savingEdit ? '保存中...' : '保存'}
+                  {savingEdit ? t('todo.saving') : t('todo.save')}
                 </Button>
               </div>
             </div>
@@ -434,24 +476,35 @@ function App() {
                 <div>
                   <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                     <Sparkles className="size-3.5" />
-                    <span>行简</span>
+                    <span>{t('app.name')}</span>
                   </div>
-                  <CardTitle className="text-lg">任务与日历</CardTitle>
-                  <CardDescription className="mt-1 text-xs">左栏切换日期，右侧处理任务</CardDescription>
+                  <CardTitle className="text-lg">{t('app.subtitle')}</CardTitle>
+                  <CardDescription className="mt-1 text-xs">{t('app.description')}</CardDescription>
                 </div>
                 <ModeToggle />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSyncSettingsOpen(true)}
+                    aria-label={t('settings.title')}
+                    title={t('settings.title')}
+                    className="size-8"
+                  >
+                    <Settings className="size-4" />
+                  </Button>
               </div>
 
 
               <div className="mt-2 grid gap-1">
                 <SidebarButton active={scope === 'all'} onClick={() => setScope('all')}>
-                  全部任务
+                  {t('scope.all')}
                 </SidebarButton>
                 <SidebarButton active={scope === 'week'} onClick={() => setScope('week')}>
-                  本周任务
+                  {t('scope.week')}
                 </SidebarButton>
                 <SidebarButton active={scope === 'date'} onClick={() => setScope('date')}>
-                  按日期
+                  {t('scope.date')}
                 </SidebarButton>
               </div>
             </CardHeader>
@@ -484,8 +537,8 @@ function App() {
                 </div>
 
                 <div className="mb-0.5 grid grid-cols-7 text-center text-[10px] text-muted-foreground">
-                  {WEEK_LABELS.map((label) => (
-                    <span key={label}>{label}</span>
+                  {WEEK_KEYS.map((key) => (
+                    <span key={key}>{t(`week.${key}`)}</span>
                   ))}
                 </div>
                 <div className="grid grid-cols-7 gap-0.5">
@@ -514,19 +567,19 @@ function App() {
 
               <div className="flex flex-1 flex-col gap-1 overflow-hidden">
                 <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-1.5 py-1.5 text-[11px] text-muted-foreground">
-                  <p className="mb-1 font-medium text-foreground/80">当前上下文</p>
+                  <p className="mb-1 font-medium text-foreground/80">{t('context.title')}</p>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/55 px-2 py-1">
-                      <span>视图模式</span>
+                      <span>{t('context.viewMode')}</span>
                       <span className={`font-medium ${scopeTextClass}`}>{scopeLabel}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/55 px-2 py-1">
-                      <span>新增日期</span>
-                      <span className="font-medium text-foreground">{composeDate === formatLocalDate(now) ? '今天' : composeDate}</span>
+                      <span>{t('context.addDate')}</span>
+                      <span className="font-medium text-foreground">{composeDate === formatLocalDate(now) ? t('context.today') : composeDate}</span>
                     </div>
                     <div className="rounded-md border border-border/60 bg-background/55 px-2 py-1">
                       <div className="mb-1 flex items-center justify-between">
-                        <span>完成进度</span>
+                        <span>{t('context.progress')}</span>
                         <span className={`font-medium ${progressTextClass}`}>{stats.rate}%</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-border/60">
@@ -540,12 +593,14 @@ function App() {
                 </div>
 
                 <div className="rounded-md border border-border/60 bg-background/55 px-1.5 py-1 text-[11px] text-muted-foreground">
-                  <p className="font-medium text-foreground/80">快捷提示</p>
+                  <p className="font-medium text-foreground/80">{t('tips.title')}</p>
                   <ul className="mt-1 space-y-0.5 leading-4">
-                    <li>• 单击任务标题可展开或收起详情。</li>
-                    <li>• Markdown 支持 Ctrl/Cmd + B、Ctrl/Cmd + I。</li>
+                    <li>{t('tips.expand')}</li>
+                    <li>{t('tips.markdown')}</li>
                   </ul>
                 </div>
+
+                <SyncStatus />
               </div>
             </CardContent>
           </Card>
@@ -556,12 +611,12 @@ function App() {
             <CardContent className="py-1.5">
               <div className="mb-1 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/25 px-2.5 py-1">
                 <div className="min-w-0 flex items-center gap-2">
-                  <p className="shrink-0 text-sm font-semibold text-foreground">快速添加待办</p>
+                  <p className="shrink-0 text-sm font-semibold text-foreground">{t('composer.title')}</p>
                   <span className="min-w-0 truncate text-[11px] text-muted-foreground">
-                    标题必填，详情可选（支持 Markdown）
+                    {t('composer.hint')}
                   </span>
                 </div>
-                <p className="shrink-0 text-xs text-muted-foreground">{composeDate === formatLocalDate(now) ? `今天 ${composeDate.slice(5)}` : composeDate}</p>
+                <p className="shrink-0 text-xs text-muted-foreground">{composeDate === formatLocalDate(now) ? `${t('context.today')} ${composeDate.slice(5)}` : composeDate}</p>
               </div>
 
               <form
@@ -575,13 +630,13 @@ function App() {
                   <Input
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    placeholder="输入标题后回车或点击添加"
+                    placeholder={t('composer.placeholder')}
                     maxLength={200}
                     disabled={submitting}
                     className="h-9"
                   />
                   <Button type="submit" disabled={submitting} className="h-9 min-w-20">
-                    {submitting ? '添加中...' : '添加'}
+                    {submitting ? t('composer.adding') : t('composer.add')}
                   </Button>
                 </div>
 
@@ -594,9 +649,9 @@ function App() {
                     disabled={submitting}
                     className="h-7 px-2 text-xs"
                   >
-                    {showComposerDetail ? '收起详情编辑器' : '添加详情（可选）'}
+                    {showComposerDetail ? t('composer.collapseDetail') : t('composer.toggleDetail')}
                   </Button>
-                  <p className="text-xs text-muted-foreground">日期在左侧日历选择</p>
+                  <p className="text-xs text-muted-foreground">{t('composer.dateHint')}</p>
                 </div>
 
                 {showComposerDetail && (
@@ -604,7 +659,7 @@ function App() {
                     <MarkdownEditor
                       value={detailMd}
                       onChange={setDetailMd}
-                      placeholder="详细内容（可选，支持 Markdown）"
+                      placeholder={t('composer.detailPlaceholder')}
                       disabled={submitting}
                     />
                   </div>
@@ -621,21 +676,21 @@ function App() {
           <Card className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-border/90 bg-card/95 shadow-[0_8px_20px_rgba(16,24,40,0.08)]">
             <CardHeader className="px-4 py-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="text-base">任务清单</CardTitle>
+                <CardTitle className="text-base">{t('todo.list')}</CardTitle>
                 <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as TodoFilter)}>
                   <TabsList>
-                    <TabsTrigger value="all">全部 {stats.total}</TabsTrigger>
-                    <TabsTrigger value="active">进行中 {stats.active}</TabsTrigger>
-                    <TabsTrigger value="completed">已完成 {stats.completed}</TabsTrigger>
+                    <TabsTrigger value="all">{t('todo.all')} {stats.total}</TabsTrigger>
+                    <TabsTrigger value="active">{t('todo.active')} {stats.active}</TabsTrigger>
+                    <TabsTrigger value="completed">{t('todo.completed')} {stats.completed}</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
             </CardHeader>
             <CardContent className="panel-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-0 pb-2">
               {loading ? (
-                <p className="py-5 text-sm text-muted-foreground">加载中...</p>
+                <p className="py-5 text-sm text-muted-foreground">{t('todo.loading')}</p>
               ) : filteredTodos.length === 0 ? (
-                <p className="py-5 text-sm text-muted-foreground">该范围/筛选下暂无任务。</p>
+                <p className="py-5 text-sm text-muted-foreground">{t('todo.empty')}</p>
               ) : canReorder ? (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <SortableContext
@@ -717,6 +772,7 @@ function TodoRow({
   onToggleExpand,
   onStartEdit,
 }: TodoRowProps) {
+  const { t } = useTranslation()
   const rowDisabled = disabled
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -779,12 +835,12 @@ function TodoRow({
                       }`}
                     >
                       {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-                      {expanded ? '已展开' : '可展开'}
+                      {expanded ? t('todo.expanded') : t('todo.expandable')}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/35 px-2 py-0.5 text-muted-foreground/90">
                       <FileText className="size-3 opacity-75" />
-                      暂无详情
+                      {t('todo.noDetail')}
                     </span>
                   )}
                 </div>
@@ -803,7 +859,7 @@ function TodoRow({
                   disabled={rowDisabled}
                   className="h-8 rounded-none rounded-l-md border-r border-red-500/30 px-2 text-red-600 hover:bg-red-500/15 dark:text-red-300"
                 >
-                  确认删除
+                  {t('todo.confirmDelete')}
                 </Button>
                 <Button
                   type="button"
@@ -813,7 +869,7 @@ function TodoRow({
                   disabled={rowDisabled}
                   className="h-8 rounded-none rounded-r-md px-2"
                 >
-                  取消
+                  {t('todo.cancel')}
                 </Button>
               </div>
             ) : (
@@ -825,8 +881,8 @@ function TodoRow({
                   onClick={() => onStartEdit(todo)}
                   disabled={rowDisabled}
                   className="size-8 rounded-none rounded-l-md border-r border-border/70"
-                  aria-label="编辑任务"
-                  title="编辑任务"
+                  aria-label={t('todo.edit')}
+                  title={t('todo.edit')}
                 >
                   <FileText className="size-3.5" />
                 </Button>
@@ -837,8 +893,8 @@ function TodoRow({
                   onClick={() => onRequestDeleteConfirm(todo.id)}
                   disabled={rowDisabled}
                   className="size-8 rounded-none rounded-r-md text-red-500 hover:bg-red-500/12 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
-                  aria-label="删除任务"
-                  title="删除任务"
+                  aria-label={t('todo.deleteTask')}
+                  title={t('todo.deleteTask')}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
@@ -878,7 +934,7 @@ function TodoRow({
               </ReactMarkdown>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">暂无详细内容，点击编辑可补充。</p>
+            <p className="text-xs text-muted-foreground">{t('todo.noContent')}</p>
           )}
         </div>
       )}

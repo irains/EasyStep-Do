@@ -1,0 +1,111 @@
+{
+  "app": {
+    "name": "行简",
+    "subtitle": "任务与日历",
+    "description": "左栏切换日期，右侧处理任务"
+  },
+  "scope": {
+    "all": "全部任务",
+    "week": "本周任务",
+    "date": "按日期"
+  },
+  "context": {
+    "title": "当前上下文",
+    "viewMode": "视图模式",
+    "addDate": "新增日期",
+    "today": "今天",
+    "progress": "完成进度"
+  },
+  "tips": {
+    "title": "快捷提示",
+    "expand": "• 单击任务标题可展开或收起详情。",
+    "markdown": "• Markdown 支持 Ctrl/Cmd + B、Ctrl/Cmd + I。"
+  },
+  "time": {
+    "dawn": "凌晨",
+    "morning": "上午",
+    "noon": "中午",
+    "afternoon": "下午",
+    "evening": "晚上"
+  },
+  "week": {
+    "mon": "一", "tue": "二", "wed": "三", "thu": "四", "fri": "五", "sat": "六", "sun": "日"
+  },
+  "composer": {
+    "title": "快速添加待办",
+    "hint": "标题必填，详情可选（支持 Markdown）",
+    "placeholder": "输入标题后回车或点击添加",
+    "add": "添加",
+    "adding": "添加中...",
+    "toggleDetail": "添加详情（可选）",
+    "collapseDetail": "收起详情编辑器",
+    "dateHint": "日期在左侧日历选择",
+    "detailPlaceholder": "详细内容（可选，支持 Markdown）"
+  },
+  "todo": {
+    "list": "任务清单",
+    "all": "全部",
+    "active": "进行中",
+    "completed": "已完成",
+    "loading": "加载中...",
+    "empty": "该范围/筛选下暂无任务。",
+    "expanded": "已展开",
+    "expandable": "可展开",
+    "noDetail": "暂无详情",
+    "noContent": "暂无详细内容，点击编辑可补充。",
+    "titleRequired": "请输入待办标题",
+    "editTitle": "任务标题",
+    "edit": "编辑任务",
+    "closeEdit": "关闭编辑",
+    "deleteTask": "删除任务",
+    "confirmDelete": "确认删除",
+    "cancel": "取消",
+    "save": "保存",
+    "saving": "保存中..."
+  },
+  "settings": {
+    "title": "设置",
+    "sync": {
+      "title": "WebDAV 同步设置",
+      "serverUrl": "服务器地址",
+      "serverPlaceholder": "https://dav.jianguo.com/dav/",
+      "username": "用户名",
+      "password": "密码",
+      "passwordPlaceholder": "密码或应用专用密码",
+      "remoteDir": "远程目录",
+      "authMethod": "认证方式",
+      "authAuto": "自动检测",
+      "timeout": "超时时间（秒）",
+      "testConnection": "测试连接",
+      "saveConfig": "保存配置",
+      "syncNow": "立即同步",
+      "testSuccess": "连接成功，检测到认证方式: {{method}}",
+      "configSaved": "配置已保存",
+      "autoSync": "自动同步",
+      "autoSyncEnabled": "启用自动同步",
+      "autoSyncInterval": "同步间隔（分钟）"
+    },
+    "theme": {
+      "title": "主题设置",
+      "system": "跟随系统",
+      "light": "日间模式",
+      "dark": "夜间模式"
+    },
+    "language": {
+      "title": "语言设置",
+      "zh": "中文",
+      "en": "English"
+    }
+  },
+  "syncStatus": {
+    "title": "同步状态",
+    "notSynced": "未同步",
+    "updated": "{{count}} 条更新",
+    "history": "同步历史"
+  },
+  "providers": {
+    "jianguo": "坚果云",
+    "nextcloud": "Nextcloud",
+    "synology": "Synology"
+  }
+}
