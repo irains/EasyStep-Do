@@ -196,6 +196,21 @@ function App() {
     return scopedTodos
   }, [activeFilter, scopedTodos])
 
+  const groupedFilteredTodos = useMemo(() => {
+    const groups = new Map<string, Todo[]>()
+
+    for (const todo of filteredTodos) {
+      const group = groups.get(todo.journal_date)
+      if (group) {
+        group.push(todo)
+      } else {
+        groups.set(todo.journal_date, [todo])
+      }
+    }
+
+    return Array.from(groups.entries()).map(([date, groupedTodos]) => ({ date, todos: groupedTodos }))
+  }, [filteredTodos])
+
   const stats = useMemo(() => {
     const total = scopedTodos.length
     const completed = scopedTodos.filter((todo) => todo.completed).length
@@ -783,24 +798,34 @@ function App() {
                   </SortableContext>
                 </DndContext>
               ) : (
-                <ul className="grid gap-1.5 pr-1">
-                  {filteredTodos.map((todo) => (
-                    <TodoRow
-                      key={todo.id}
-                      todo={todo}
-                      disabled={pendingId === todo.id}
-                      expanded={expandedTodoId === todo.id}
-                      editing={editingTodoId !== null}
-                      canReorder={canReorder}
-                      deleteConfirming={deleteConfirmId === todo.id}
-                      onToggle={handleToggle}
-                      onDelete={handleDelete}
-                      onRequestDeleteConfirm={setDeleteConfirmId}
-                      onToggleExpand={handleToggleExpand}
-                      onStartEdit={handleStartEdit}
-                    />
+                <div className="grid gap-3 pr-1">
+                  {groupedFilteredTodos.map((group) => (
+                    <section key={group.date} className="grid gap-1.5">
+                      <div className="flex items-center justify-between border-b border-border/45 pb-1 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground/80">{group.date}</span>
+                        <span>{group.todos.length}</span>
+                      </div>
+                      <ul className="grid gap-1.5">
+                        {group.todos.map((todo) => (
+                          <TodoRow
+                            key={todo.id}
+                            todo={todo}
+                            disabled={pendingId === todo.id}
+                            expanded={expandedTodoId === todo.id}
+                            editing={editingTodoId !== null}
+                            canReorder={canReorder}
+                            deleteConfirming={deleteConfirmId === todo.id}
+                            onToggle={handleToggle}
+                            onDelete={handleDelete}
+                            onRequestDeleteConfirm={setDeleteConfirmId}
+                            onToggleExpand={handleToggleExpand}
+                            onStartEdit={handleStartEdit}
+                          />
+                        ))}
+                      </ul>
+                    </section>
                   ))}
-                </ul>
+                </div>
               )}
             </CardContent>
           </Card>
