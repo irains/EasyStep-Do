@@ -18,7 +18,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileText, Settings, Sparkles, Trash2, X } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileText, Search, Settings, Sparkles, Trash2, X } from 'lucide-react'
 
 import {
   addTodo,
@@ -69,6 +69,7 @@ function App() {
   const [syncSettingsOpen, setSyncSettingsOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [showComposerDetail, setShowComposerDetail] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<TodoFilter>('all')
   const [scope, setScope] = useState<'all' | 'week' | 'date'>('all')
   const [composeDate, setComposeDate] = useState(() => formatLocalDate(new Date()))
@@ -186,7 +187,10 @@ function App() {
     return todos.filter((todo) => todo.journal_date >= weekStart && todo.journal_date <= weekEnd)
   }, [scope, todos, now, composeDate])
 
-  const filteredTodos = useMemo(() => {
+  const normalizedSearchQuery = useMemo(() => searchQuery.trim().toLocaleLowerCase(), [searchQuery])
+  const searchActive = normalizedSearchQuery.length > 0
+
+  const statusFilteredTodos = useMemo(() => {
     if (activeFilter === 'active') {
       return scopedTodos.filter((todo) => !todo.completed)
     }
@@ -195,6 +199,16 @@ function App() {
     }
     return scopedTodos
   }, [activeFilter, scopedTodos])
+
+  const filteredTodos = useMemo(() => {
+    if (!normalizedSearchQuery) {
+      return statusFilteredTodos
+    }
+
+    return statusFilteredTodos.filter((todo) =>
+      `${todo.title} ${todo.detail_md} ${todo.journal_date}`.toLocaleLowerCase().includes(normalizedSearchQuery),
+    )
+  }, [normalizedSearchQuery, statusFilteredTodos])
 
   const groupedFilteredTodos = useMemo(() => {
     const groups = new Map<string, Todo[]>()
@@ -428,7 +442,7 @@ function App() {
   }, [now, t])
 
   const scopeLabel = scope === 'all' ? t('scope.all') : scope === 'week' ? t('scope.week') : t('scope.date')
-  const canReorder = scope === 'date'
+  const canReorder = scope === 'date' && !searchActive
   const scopeTextClass = scope === 'all' ? 'text-sky-500 dark:text-sky-400' : scope === 'week' ? 'text-violet-500 dark:text-violet-400' : 'text-amber-500 dark:text-amber-400'
   const progressTextClass =
     stats.rate === 100
@@ -764,13 +778,33 @@ function App() {
                     {t('report.open')}
                   </Button>
                 </div>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground/75" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder={t('todo.searchPlaceholder')}
+                    className="h-8 pr-8 pl-8 text-sm"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label={t('todo.clearSearch')}
+                      title={t('todo.clearSearch')}
+                    >
+                      <X className="size-3" />
+                    </button>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="panel-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-0 pb-2">
               {loading ? (
                 <p className="py-5 text-sm text-muted-foreground">{t('todo.loading')}</p>
               ) : filteredTodos.length === 0 ? (
-                <p className="py-5 text-sm text-muted-foreground">{t('todo.empty')}</p>
+                <p className="py-5 text-sm text-muted-foreground">{searchActive ? t('todo.searchEmpty') : t('todo.empty')}</p>
               ) : canReorder ? (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <SortableContext
