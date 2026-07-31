@@ -36,9 +36,10 @@ type Props = {
   open: boolean
   onClose: () => void
   onSynced?: () => void
+  onSyncConfigSaved?: () => void
 }
 
-export function SettingsPanel({ open, onClose, onSynced }: Props) {
+export function SettingsPanel({ open, onClose, onSynced, onSyncConfigSaved }: Props) {
   const { t, i18n } = useTranslation()
   const { theme, setTheme } = useTheme()
 
@@ -95,6 +96,7 @@ export function SettingsPanel({ open, onClose, onSynced }: Props) {
     try {
       await saveSyncConfig(config)
       setTestResult(t('settings.sync.configSaved'))
+      onSyncConfigSaved?.()
     } catch (e) {
       setError(String(e))
     } finally {

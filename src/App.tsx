@@ -31,7 +31,7 @@ import {
   type TodoFilter,
 } from '@/api/todo'
 import { invoke } from '@tauri-apps/api/core'
-import { getSyncConfig } from '@/api/sync'
+import { getSyncConfig, syncNow } from '@/api/sync'
 import { MarkdownEditor } from '@/components/markdown-editor'
 import { MarkdownPreview } from '@/components/markdown-preview'
 import { ModeToggle } from '@/components/mode-toggle'
@@ -114,6 +114,23 @@ function App() {
 
   // Auto-sync timer
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const autoSyncRunningRef = useRef(false)
+
+  const runAutoSync = useCallback(async () => {
+    if (autoSyncRunningRef.current) {
+      return
+    }
+
+    autoSyncRunningRef.current = true
+    try {
+      await syncNow()
+      await loadTodos()
+    } catch (e) {
+      console.error('auto sync failed:', e)
+    } finally {
+      autoSyncRunningRef.current = false
+    }
+  }, [loadTodos])
 
   const startAutoSync = useCallback(async () => {
     if (syncTimerRef.current) {
@@ -124,13 +141,13 @@ function App() {
       const cfg = await getSyncConfig()
       if (cfg?.auto_sync_enabled && cfg.auto_sync_interval_mins > 0) {
         syncTimerRef.current = setInterval(() => {
-          void loadTodos()
+          void runAutoSync()
         }, cfg.auto_sync_interval_mins * 60 * 1000)
       }
     } catch {
       // ignore
     }
-  }, [loadTodos])
+  }, [runAutoSync])
 
   useEffect(() => {
     void startAutoSync()
@@ -402,7 +419,12 @@ function App() {
 
   return (
     <main className="h-screen overflow-hidden p-2 lg:p-4">
-      <SettingsPanel open={syncSettingsOpen} onClose={() => setSyncSettingsOpen(false)} onSynced={() => void loadTodos()} />
+      <SettingsPanel
+        open={syncSettingsOpen}
+        onClose={() => setSyncSettingsOpen(false)}
+        onSynced={() => void loadTodos()}
+        onSyncConfigSaved={() => void startAutoSync()}
+      />
       {reportOpen && (
         <ReportPanel
           open
