@@ -65,6 +65,7 @@
   },
   "settings": {
     "title": "设置",
+    "version": "版本号",
     "sync": {
       "title": "WebDAV 同步设置",
       "serverUrl": "服务器地址",

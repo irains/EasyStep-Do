@@ -11,6 +11,7 @@ import {
   type WebdavConfig,
   type SyncResult,
 } from '@/api/sync'
+import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,6 +52,7 @@ export function SettingsPanel({ open, onClose, onSynced, onSyncConfigSaved }: Pr
   const [saving, setSaving] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
+  const [appVersion, setAppVersion] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -59,6 +61,9 @@ export function SettingsPanel({ open, onClose, onSynced, onSyncConfigSaved }: Pr
       getSyncConfig().then((c) => {
         if (c) setConfig(c)
       })
+      getVersion()
+        .then(setAppVersion)
+        .catch(() => setAppVersion(''))
     }
     if (!open) {
       setLoaded(false)
@@ -211,6 +216,13 @@ export function SettingsPanel({ open, onClose, onSynced, onSyncConfigSaved }: Pr
                   >
                     English
                   </button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">{t('settings.version')}</span>
+                  <span className="font-medium text-foreground">{appVersion || '-'}</span>
                 </div>
               </div>
             </div>

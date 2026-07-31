@@ -65,6 +65,7 @@
   },
   "settings": {
     "title": "Settings",
+    "version": "Version",
     "sync": {
       "title": "WebDAV Sync Settings",
       "serverUrl": "Server URL",
