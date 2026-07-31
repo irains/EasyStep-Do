@@ -18,10 +18,12 @@ type ReportPanelProps = {
   todos: Todo[]
   now: Date
   locale: string
+  pendingTodoId?: string | null
+  onToggleTodo: (id: string) => void | Promise<void>
   onClose: () => void
 }
 
-export function ReportPanel({ open, todos, now, locale, onClose }: ReportPanelProps) {
+export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, onToggleTodo, onClose }: ReportPanelProps) {
   const { t } = useTranslation()
   const [preset, setPreset] = useState<ReportPreset>('month')
   const [view, setView] = useState<ReportView>('summary')
@@ -268,6 +270,8 @@ export function ReportPanel({ open, todos, now, locale, onClose }: ReportPanelPr
                     count={reportModel.totals.completed}
                     emptyLabel={t('report.emptyCompleted')}
                     groups={reportModel.completedByDate}
+                    pendingTodoId={pendingTodoId}
+                    onToggleTodo={onToggleTodo}
                     tone="success"
                   />
                   <TaskGroupSection
@@ -275,6 +279,8 @@ export function ReportPanel({ open, todos, now, locale, onClose }: ReportPanelPr
                     count={reportModel.totals.active}
                     emptyLabel={t('report.emptyActive')}
                     groups={reportModel.activeByDate}
+                    pendingTodoId={pendingTodoId}
+                    onToggleTodo={onToggleTodo}
                     tone="warning"
                   />
                 </div>
@@ -304,12 +310,16 @@ function TaskGroupSection({
   count,
   emptyLabel,
   groups,
+  pendingTodoId,
+  onToggleTodo,
   tone,
 }: {
   title: string
   count: number
   emptyLabel: string
   groups: Array<{ date: string; todos: Todo[] }>
+  pendingTodoId: string | null
+  onToggleTodo: (id: string) => void | Promise<void>
   tone: 'success' | 'warning'
 }) {
   const dotClass = tone === 'success' ? 'bg-emerald-400' : 'bg-amber-400'
@@ -322,12 +332,24 @@ function TaskGroupSection({
         </div>
         <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{count}</span>
       </div>
-      <TaskGroups groups={groups} emptyLabel={emptyLabel} />
+      <TaskGroups groups={groups} emptyLabel={emptyLabel} pendingTodoId={pendingTodoId} onToggleTodo={onToggleTodo} />
     </section>
   )
 }
 
-function TaskGroups({ groups, emptyLabel }: { groups: Array<{ date: string; todos: Todo[] }>; emptyLabel: string }) {
+function TaskGroups({
+  groups,
+  emptyLabel,
+  pendingTodoId,
+  onToggleTodo,
+}: {
+  groups: Array<{ date: string; todos: Todo[] }>
+  emptyLabel: string
+  pendingTodoId: string | null
+  onToggleTodo: (id: string) => void | Promise<void>
+}) {
+  const { t } = useTranslation()
+
   if (groups.length === 0) {
     return <p className="rounded-md border border-dashed border-border/70 bg-muted/15 px-3 py-3 text-xs text-muted-foreground">{emptyLabel}</p>
   }
@@ -338,12 +360,23 @@ function TaskGroups({ groups, emptyLabel }: { groups: Array<{ date: string; todo
         <div key={group.date} className={groupIndex === 0 ? '' : 'mt-3 border-t border-border/45 pt-3'}>
           <p className="mb-1.5 text-xs font-medium text-muted-foreground">{group.date}</p>
           <ul className="grid gap-1">
-            {group.todos.map((todo) => (
-              <li key={todo.id} className="flex items-start gap-2 text-sm leading-5">
-                <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${todo.completed ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                <span className={todo.completed ? 'text-foreground' : 'text-muted-foreground'}>{todo.title}</span>
-              </li>
-            ))}
+            {group.todos.map((todo) => {
+              const isPending = pendingTodoId === todo.id
+              return (
+                <li key={todo.id} className="flex items-start gap-2 text-sm leading-5">
+                  <input
+                    type="checkbox"
+                    checked={todo.completed}
+                    disabled={isPending}
+                    onChange={() => void onToggleTodo(todo.id)}
+                    aria-label={t('report.toggleTaskStatus', { title: todo.title })}
+                    title={todo.completed ? t('report.markActive') : t('report.markComplete')}
+                    className="mt-0.5 size-4 shrink-0 rounded border-border/75 bg-background text-emerald-500 accent-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <span className={todo.completed ? 'text-foreground' : 'text-muted-foreground'}>{todo.title}</span>
+                </li>
+              )
+            })}
           </ul>
         </div>
       ))}

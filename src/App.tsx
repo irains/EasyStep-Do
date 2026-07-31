@@ -403,7 +403,17 @@ function App() {
   return (
     <main className="h-screen overflow-hidden p-2 lg:p-4">
       <SettingsPanel open={syncSettingsOpen} onClose={() => setSyncSettingsOpen(false)} onSynced={() => void loadTodos()} />
-      {reportOpen && <ReportPanel open todos={todos} now={now} locale={locale} onClose={() => setReportOpen(false)} />}
+      {reportOpen && (
+        <ReportPanel
+          open
+          todos={todos}
+          now={now}
+          locale={locale}
+          pendingTodoId={pendingId}
+          onToggleTodo={handleToggle}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
       {editingTodo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[1px]">
           <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-border/80 bg-card/98 shadow-[0_18px_48px_rgba(0,0,0,0.22)]">
