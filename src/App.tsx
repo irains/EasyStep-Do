@@ -205,6 +205,21 @@ function App() {
   }, [scopedTodos])
 
   const calendarDays = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth])
+  const calendarStatusByDate = useMemo(() => {
+    const statusByDate = new Map<string, { completed: number; active: number }>()
+
+    for (const todo of todos) {
+      const status = statusByDate.get(todo.journal_date) ?? { completed: 0, active: 0 }
+      if (todo.completed) {
+        status.completed += 1
+      } else {
+        status.active += 1
+      }
+      statusByDate.set(todo.journal_date, status)
+    }
+
+    return statusByDate
+  }, [todos])
   const editingTodo = useMemo(
     () => (editingTodoId ? todos.find((todo) => todo.id === editingTodoId) ?? null : null),
     [editingTodoId, todos],
@@ -574,26 +589,38 @@ function App() {
                   ))}
                 </div>
                 <div className="grid grid-cols-7 gap-0.5">
-                  {calendarDays.map((day) => (
-                    <button
-                      key={day.key}
-                      type="button"
-                      onClick={() => {
-                        setScope('date')
-                        setComposeDate(day.key)
-                        setVisibleMonth(monthStart(day.date))
-                      }}
-                      className={`h-6 rounded text-[10px] transition-colors ${
-                        day.key === composeDate
-                          ? 'bg-foreground text-background'
-                          : day.inCurrentMonth
-                            ? 'hover:bg-muted'
-                            : 'text-muted-foreground/50 hover:bg-muted/70'
-                      } ${day.isToday && day.key !== composeDate ? 'ring-1 ring-foreground/35' : ''}`}
-                    >
-                      {day.date.getDate()}
-                    </button>
-                  ))}
+                  {calendarDays.map((day) => {
+                    const dayStatus = calendarStatusByDate.get(day.key)
+                    const hasCompleted = Boolean(dayStatus?.completed)
+                    const hasActive = Boolean(dayStatus?.active)
+
+                    return (
+                      <button
+                        key={day.key}
+                        type="button"
+                        onClick={() => {
+                          setScope('date')
+                          setComposeDate(day.key)
+                          setVisibleMonth(monthStart(day.date))
+                        }}
+                        className={`relative flex h-7 flex-col items-center justify-center rounded text-[10px] leading-none transition-colors ${
+                          day.key === composeDate
+                            ? 'bg-foreground text-background'
+                            : day.inCurrentMonth
+                              ? 'hover:bg-muted'
+                              : 'text-muted-foreground/50 hover:bg-muted/70'
+                        } ${day.isToday && day.key !== composeDate ? 'ring-1 ring-foreground/35' : ''}`}
+                      >
+                        <span>{day.date.getDate()}</span>
+                        {(hasCompleted || hasActive) && (
+                          <span className="absolute bottom-0.5 flex items-center justify-center gap-0.5">
+                            {hasCompleted && <span className="h-1 w-1 rounded-full bg-emerald-400" />}
+                            {hasActive && <span className="h-1 w-1 rounded-full bg-amber-400" />}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
