@@ -18,9 +18,12 @@ export function SyncStatus() {
   }
 
   useEffect(() => {
-    loadHistory()
-    const timer = window.setInterval(() => loadHistory(), 30000)
-    return () => window.clearInterval(timer)
+    const initialTimer = window.setTimeout(() => void loadHistory(), 0)
+    const timer = window.setInterval(() => void loadHistory(), 30000)
+    return () => {
+      window.clearTimeout(initialTimer)
+      window.clearInterval(timer)
+    }
   }, [])
 
   const lastEntry = entries[0]

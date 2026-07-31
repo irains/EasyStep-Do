@@ -6,7 +6,6 @@ use crate::todo::AppState;
 use chrono::Utc;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use tauri::State;
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -17,12 +17,7 @@ import {
   Strikethrough,
   WholeWord,
 } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import rehypeSanitize from 'rehype-sanitize'
-import remarkGfm from 'remark-gfm'
-
-import { openExternalUrl } from '@/api/todo'
-
+import { MarkdownPreview } from '@/components/markdown-preview'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
@@ -299,7 +294,7 @@ export function MarkdownEditor({ value, onChange, placeholder, disabled }: Markd
               disabled={disabled}
               className="markdown-scrollbar h-[260px] min-h-[260px] border-border/70 bg-background/65"
             />
-            <PreviewPane value={previewValue} />
+            <MarkdownPreview value={previewValue} emptyLabel="暂无预览内容" className="h-[260px]" />
           </div>
         )}
 
@@ -334,56 +329,12 @@ export function MarkdownEditor({ value, onChange, placeholder, disabled }: Markd
           />
         )}
 
-        {mode === 'preview' && <PreviewPane value={previewValue} />}
+        {mode === 'preview' && <MarkdownPreview value={previewValue} emptyLabel="暂无预览内容" className="h-[260px]" />}
       </Tabs>
     </div>
   )
 }
 
-function PreviewPane({ value }: { value: string }) {
-  const handleLinkClick = async (href?: string) => {
-    if (!href) {
-      return
-    }
-    try {
-      await openExternalUrl(href)
-    } catch (error) {
-      console.error('open external url failed:', error)
-    }
-  }
-
-  return (
-    <div className="markdown-scrollbar h-[260px] overflow-y-auto rounded-lg border border-border/65 bg-muted/15 p-3">
-      {value.trim() ? (
-        <div className="todo-markdown text-sm text-foreground">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeSanitize]}
-            components={{
-              a: ({ href, children, ...props }) => (
-                <a
-                  {...props}
-                  href={href}
-                  className="text-sky-600 underline underline-offset-2 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300"
-                  onClick={(event) => {
-                    event.preventDefault()
-                    void handleLinkClick(href)
-                  }}
-                >
-                  {children}
-                </a>
-              ),
-            }}
-          >
-            {value}
-          </ReactMarkdown>
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">暂无预览内容</p>
-      )}
-    </div>
-  )
-}
 
 type ToolbarButtonProps = {
   label: string

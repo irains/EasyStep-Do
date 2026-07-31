@@ -3,9 +3,6 @@ import { setTheme } from '@tauri-apps/api/app'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import type { ReactNode } from 'react'
-import ReactMarkdown from 'react-markdown'
-import rehypeSanitize from 'rehype-sanitize'
-import remarkGfm from 'remark-gfm'
 import {
   DndContext,
   PointerSensor,
@@ -27,7 +24,6 @@ import {
   addTodo,
   deleteTodo,
   listTodos,
-  openExternalUrl,
   reorderTodo,
   toggleTodo,
   updateTodo,
@@ -37,20 +33,22 @@ import {
 import { invoke } from '@tauri-apps/api/core'
 import { getSyncConfig } from '@/api/sync'
 import { MarkdownEditor } from '@/components/markdown-editor'
+import { MarkdownPreview } from '@/components/markdown-preview'
 import { ModeToggle } from '@/components/mode-toggle'
+import { ReportPanel } from '@/components/report-panel'
 import { SettingsPanel } from '@/components/settings-panel'
 import { SyncStatus } from '@/components/sync-status'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-
-type CalendarDay = {
-  key: string
-  date: Date
-  inCurrentMonth: boolean
-  isToday: boolean
-}
+import {
+  buildCalendarDays,
+  formatLocalDate,
+  getWeekRange,
+  monthStart,
+  shiftMonth,
+} from '@/lib/date'
 
 const WEEK_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
@@ -69,6 +67,7 @@ function App() {
   const [editDetailMd, setEditDetailMd] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [syncSettingsOpen, setSyncSettingsOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const [showComposerDetail, setShowComposerDetail] = useState(false)
   const [activeFilter, setActiveFilter] = useState<TodoFilter>('all')
   const [scope, setScope] = useState<'all' | 'week' | 'date'>('all')
@@ -404,6 +403,7 @@ function App() {
   return (
     <main className="h-screen overflow-hidden p-2 lg:p-4">
       <SettingsPanel open={syncSettingsOpen} onClose={() => setSyncSettingsOpen(false)} onSynced={() => void loadTodos()} />
+      {reportOpen && <ReportPanel open todos={todos} now={now} locale={locale} onClose={() => setReportOpen(false)} />}
       {editingTodo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[1px]">
           <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-border/80 bg-card/98 shadow-[0_18px_48px_rgba(0,0,0,0.22)]">
@@ -676,7 +676,13 @@ function App() {
           <Card className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-border/90 bg-card/95 shadow-[0_8px_20px_rgba(16,24,40,0.08)]">
             <CardHeader className="px-4 py-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="text-base">{t('todo.list')}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base">{t('todo.list')}</CardTitle>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setReportOpen(true)} className="h-7 px-2">
+                    <FileText className="size-3.5" />
+                    {t('report.open')}
+                  </Button>
+                </div>
                 <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as TodoFilter)}>
                   <TabsList>
                     <TabsTrigger value="all">{t('todo.all')} {stats.total}</TabsTrigger>
@@ -907,32 +913,11 @@ function TodoRow({
       {expanded && (
         <div className="border-t border-border/70 bg-muted/25 px-3 py-2 text-sm">
           {todo.detail_md ? (
-            <div className="todo-markdown text-sm text-foreground">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeSanitize]}
-                components={{
-                  a: ({ href, children, ...props }) => (
-                    <a
-                      {...props}
-                      href={href}
-                      className="text-sky-600 underline underline-offset-2 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300"
-                      onClick={(event) => {
-                        event.preventDefault()
-                        if (!href) {
-                          return
-                        }
-                        void openExternalUrl(href)
-                      }}
-                    >
-                      {children}
-                    </a>
-                  ),
-                }}
-              >
-                {todo.detail_md}
-              </ReactMarkdown>
-            </div>
+            <MarkdownPreview
+              value={todo.detail_md}
+              emptyLabel={t('todo.noContent')}
+              className="border-0 bg-transparent p-0"
+            />
           ) : (
             <p className="text-xs text-muted-foreground">{t('todo.noContent')}</p>
           )}
@@ -962,51 +947,6 @@ function SidebarButton({ active, onClick, children }: SidebarButtonProps) {
       {children}
     </button>
   )
-}
-
-function formatLocalDate(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function monthStart(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1)
-}
-
-function shiftMonth(date: Date, delta: number) {
-  return new Date(date.getFullYear(), date.getMonth() + delta, 1)
-}
-
-function getWeekRange(date: Date): [string, string] {
-  const day = date.getDay()
-  const mondayOffset = day === 0 ? -6 : 1 - day
-  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate() + mondayOffset)
-  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6)
-  return [formatLocalDate(monday), formatLocalDate(sunday)]
-}
-
-function buildCalendarDays(visibleMonth: Date): CalendarDay[] {
-  const monthFirst = monthStart(visibleMonth)
-  const offset = (monthFirst.getDay() + 6) % 7
-  const start = new Date(monthFirst.getFullYear(), monthFirst.getMonth(), 1 - offset)
-  const totalCells = 42
-  const today = formatLocalDate(new Date())
-  const days: CalendarDay[] = []
-
-  for (let i = 0; i < totalCells; i += 1) {
-    const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
-    const key = formatLocalDate(date)
-    days.push({
-      key,
-      date,
-      inCurrentMonth: date.getMonth() === visibleMonth.getMonth(),
-      isToday: key === today,
-    })
-  }
-
-  return days
 }
 
 export default App
