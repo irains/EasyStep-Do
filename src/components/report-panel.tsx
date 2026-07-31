@@ -11,6 +11,7 @@ import { formatLocalDate, getMonthRange, getWeekRange } from '@/lib/date'
 import { buildReportModel, generateReportMarkdown, type ReportMarkdownLabels } from '@/lib/report'
 
 type ReportPreset = 'week' | 'month' | 'custom'
+type ReportView = 'summary' | 'details'
 
 type ReportPanelProps = {
   open: boolean
@@ -23,6 +24,7 @@ type ReportPanelProps = {
 export function ReportPanel({ open, todos, now, locale, onClose }: ReportPanelProps) {
   const { t } = useTranslation()
   const [preset, setPreset] = useState<ReportPreset>('month')
+  const [view, setView] = useState<ReportView>('summary')
   const [anchorDate, setAnchorDate] = useState(now)
   const [customStartDate, setCustomStartDate] = useState(() => getMonthRange(now)[0])
   const [customEndDate, setCustomEndDate] = useState(() => getMonthRange(now)[1])
@@ -226,22 +228,41 @@ export function ReportPanel({ open, todos, now, locale, onClose }: ReportPanelPr
             </p>
           )}
 
-          <p className="mt-3 border-y border-border/65 py-2 text-sm leading-5 text-muted-foreground">
-            {stats.all === 0
-              ? t('report.summaryEmpty')
-              : t('report.summary', { total: stats.all, completed: stats.completed, active: stats.active })}
-          </p>
+          <section className="mt-3 overflow-hidden rounded-xl border border-border/70 bg-background/55">
+            <div className="flex flex-col gap-2 border-b border-border/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">
+                  {view === 'summary' ? t('report.summaryTitle') : t('report.detailsTitle')}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {stats.all === 0
+                    ? t('report.summaryEmpty')
+                    : t('report.summaryCompact', { total: stats.all, completed: stats.completed, active: stats.active })}
+                </p>
+              </div>
+              <Tabs value={view} onValueChange={(value) => setView(value as ReportView)} className="w-full sm:w-auto">
+                <TabsList className="h-8 w-full sm:w-auto">
+                  <TabsTrigger value="summary" className="flex-1 sm:min-w-[88px] sm:flex-none">
+                    {t('report.summaryTab')}
+                  </TabsTrigger>
+                  <TabsTrigger value="details" className="flex-1 sm:min-w-[88px] sm:flex-none">
+                    {t('report.detailsTab')}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
 
-          <div className="mt-3 grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            {reportModel && (
-              <section className="min-w-0">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-foreground">{t('report.taskDetails')}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {stats.completed} / {stats.all}
-                  </p>
-                </div>
-                <div className="grid gap-4">
+            {view === 'summary' ? (
+              <div className="p-3">
+                <MarkdownPreview
+                  value={markdown}
+                  emptyLabel={t('report.emptyPreview')}
+                  className="max-h-[58vh] min-h-[380px] border-0 bg-transparent p-0"
+                />
+              </div>
+            ) : (
+              reportModel && (
+                <div className="grid gap-4 p-3">
                   <TaskGroupSection
                     title={t('report.completedTasks')}
                     count={reportModel.totals.completed}
@@ -257,23 +278,9 @@ export function ReportPanel({ open, todos, now, locale, onClose }: ReportPanelPr
                     tone="warning"
                   />
                 </div>
-              </section>
+              )
             )}
-
-            <div className="rounded-lg border border-border/70 bg-background/55 p-3">
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{t('report.preview')}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{t('report.previewHint')}</p>
-                </div>
-              </div>
-              <MarkdownPreview
-                value={markdown}
-                emptyLabel={t('report.emptyPreview')}
-                className="max-h-[52vh] min-h-[300px] bg-muted/10"
-              />
-            </div>
-          </div>
+          </section>
         </div>
 
         <div className="shrink-0 border-t border-border/70 bg-card/98 px-4 py-3">
