@@ -152,6 +152,7 @@
     "copyFailed": "复制失败，请手动选择预览内容复制。",
     "markdownHeading": "工作汇总（{{range}}）",
     "scopeNote": "统计口径：按任务归属日期汇总，列出当前已完成与待跟进任务。",
+    "emptyAllMarkdown": "该范围暂无任务。",
     "emptyCompletedMarkdown": "该范围暂无已完成任务。",
     "emptyActiveMarkdown": "该范围暂无待跟进任务。"
   },

@@ -54,6 +54,7 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
       scopeNote: t('report.scopeNote'),
       completed: t('report.completed'),
       active: t('report.active'),
+      emptyAll: t('report.emptyAllMarkdown'),
       emptyCompleted: t('report.emptyCompletedMarkdown'),
       emptyActive: t('report.emptyActiveMarkdown'),
     }),
@@ -155,71 +156,74 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
                 </TabsList>
               </Tabs>
 
-              <div className="flex min-w-0 items-center gap-1 rounded-lg border border-border/60 bg-muted/20 p-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleShiftRange(-1)}
-                  disabled={!canShiftRange}
-                  className="size-7 shrink-0"
-                  aria-label={preset === 'week' ? t('report.previousWeek') : t('report.previousMonth')}
-                  title={preset === 'week' ? t('report.previousWeek') : t('report.previousMonth')}
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <div className="min-w-0 flex-1 px-2 text-center lg:min-w-[210px]">
-                  <p className="text-[10px] leading-3 text-muted-foreground">{t('report.range')}</p>
-                  <p className="truncate text-xs font-semibold text-foreground">{rangeLabel}</p>
+              {canShiftRange && (
+                <div className="flex min-w-0 items-center gap-1 rounded-lg border border-border/60 bg-muted/20 p-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleShiftRange(-1)}
+                    className="size-7 shrink-0"
+                    aria-label={preset === 'week' ? t('report.previousWeek') : t('report.previousMonth')}
+                    title={preset === 'week' ? t('report.previousWeek') : t('report.previousMonth')}
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <div className="min-w-0 flex-1 px-2 text-center lg:min-w-[210px]">
+                    <p className="text-[10px] leading-3 text-muted-foreground">{t('report.range')}</p>
+                    <p className="truncate text-xs font-semibold text-foreground">{rangeLabel}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleShiftRange(1)}
+                    className="size-7 shrink-0"
+                    aria-label={preset === 'week' ? t('report.nextWeek') : t('report.nextMonth')}
+                    title={preset === 'week' ? t('report.nextWeek') : t('report.nextMonth')}
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={handleResetRange} className="h-7 shrink-0 px-2">
+                    {t('report.currentPeriod')}
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleShiftRange(1)}
-                  disabled={!canShiftRange}
-                  className="size-7 shrink-0"
-                  aria-label={preset === 'week' ? t('report.nextWeek') : t('report.nextMonth')}
-                  title={preset === 'week' ? t('report.nextWeek') : t('report.nextMonth')}
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={handleResetRange} className="h-7 shrink-0 px-2">
-                  {t('report.currentPeriod')}
-                </Button>
-              </div>
+              )}
             </div>
 
             {preset === 'custom' && (
-              <div className="mt-3 grid gap-2 border-t border-border/60 pt-3 sm:grid-cols-2">
-                <label className="space-y-1 text-xs font-medium text-muted-foreground">
-                  <span>{t('report.startDate')}</span>
-                  <Input
-                    type="date"
-                    value={customStartDate}
-                    max={customEndDate || undefined}
-                    onChange={(event) => {
-                      setCopied(false)
-                      setCopyError('')
-                      setCustomStartDate(event.target.value || formatLocalDate(now))
-                    }}
-                    className="h-8 text-sm"
-                  />
-                </label>
-                <label className="space-y-1 text-xs font-medium text-muted-foreground">
-                  <span>{t('report.endDate')}</span>
-                  <Input
-                    type="date"
-                    value={customEndDate}
-                    min={customStartDate || undefined}
-                    onChange={(event) => {
-                      setCopied(false)
-                      setCopyError('')
-                      setCustomEndDate(event.target.value || formatLocalDate(now))
-                    }}
-                    className="h-8 text-sm"
-                  />
-                </label>
+              <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-1">
+                <div className="grid gap-1 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+                  <label className="grid gap-1 rounded-md bg-background/55 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    <span>{t('report.startDate')}</span>
+                    <Input
+                      type="date"
+                      value={customStartDate}
+                      max={customEndDate || undefined}
+                      onChange={(event) => {
+                        setCopied(false)
+                        setCopyError('')
+                        setCustomStartDate(event.target.value || formatLocalDate(now))
+                      }}
+                      className="h-8 border-0 bg-transparent px-0 text-sm font-semibold text-foreground shadow-none focus-visible:ring-0"
+                    />
+                  </label>
+                  <span className="hidden text-xs text-muted-foreground sm:block">-</span>
+                  <label className="grid gap-1 rounded-md bg-background/55 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    <span>{t('report.endDate')}</span>
+                    <Input
+                      type="date"
+                      value={customEndDate}
+                      min={customStartDate || undefined}
+                      onChange={(event) => {
+                        setCopied(false)
+                        setCopyError('')
+                        setCustomEndDate(event.target.value || formatLocalDate(now))
+                      }}
+                      className="h-8 border-0 bg-transparent px-0 text-sm font-semibold text-foreground shadow-none focus-visible:ring-0"
+                    />
+                  </label>
+                </div>
               </div>
             )}
           </div>

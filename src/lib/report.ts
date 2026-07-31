@@ -26,6 +26,7 @@ export type ReportMarkdownLabels = {
   scopeNote: string
   completed: string
   active: string
+  emptyAll: string
   emptyCompleted: string
   emptyActive: string
 }
@@ -62,29 +63,15 @@ export function generateReportMarkdown(
   labels: ReportMarkdownLabels,
   options: { includeActive: boolean },
 ) {
-  const lines: string[] = [
-    `# ${labels.heading}`,
-    '',
-    labels.scopeNote,
-    '',
-    `## ${labels.completed} (${model.totals.completed})`,
-    '',
-  ]
+  const lines: string[] = [`# ${labels.heading}`, '']
 
-  if (model.completedByDate.length === 0) {
-    lines.push(labels.emptyCompleted, '')
-  } else {
-    appendGroups(lines, model.completedByDate)
+  if (model.totals.all === 0) {
+    lines.push(labels.emptyAll)
+    return lines.join('\n').trimEnd()
   }
 
-  if (options.includeActive) {
-    lines.push(`## ${labels.active} (${model.totals.active})`, '')
-    if (model.activeByDate.length === 0) {
-      lines.push(labels.emptyActive, '')
-    } else {
-      appendGroups(lines, model.activeByDate, true)
-    }
-  }
+  lines.push(labels.scopeNote, '')
+  appendDateStatusGroups(lines, model, labels, options.includeActive)
 
   return lines.join('\n').trimEnd()
 }
@@ -97,15 +84,57 @@ export function getTodoDetailSummary(todo: Todo) {
     .slice(0, 88)
 }
 
-function appendGroups(lines: string[], groups: TodoReportGroup[], includeDateInItem = false) {
-  for (const group of groups) {
-    lines.push(`### ${group.date}`)
-    for (const todo of group.todos) {
-      const title = sanitizeTodoTitle(todo.title)
-      lines.push(includeDateInItem ? `- [${group.date}] ${title}` : `- ${title}`)
-    }
-    lines.push('')
+function appendDateStatusGroups(lines: string[], model: TodoReportModel, labels: ReportMarkdownLabels, includeActive: boolean) {
+  const groupedByDate = new Map<string, { completed: Todo[]; active: Todo[] }>()
+
+  for (const todo of model.completed) {
+    getDateStatusGroup(groupedByDate, todo.journal_date).completed.push(todo)
   }
+
+  if (includeActive) {
+    for (const todo of model.active) {
+      getDateStatusGroup(groupedByDate, todo.journal_date).active.push(todo)
+    }
+  }
+
+  if (groupedByDate.size === 0) {
+    lines.push(labels.emptyCompleted, '')
+    if (includeActive) {
+      lines.push(labels.emptyActive, '')
+    }
+    return
+  }
+
+  for (const [date, group] of Array.from(groupedByDate.entries()).sort(([a], [b]) => a.localeCompare(b))) {
+    lines.push(`## ${date}`, '')
+
+    if (group.completed.length > 0) {
+      appendStatusItems(lines, `${labels.completed} (${group.completed.length})`, group.completed)
+    }
+
+    if (includeActive && group.active.length > 0) {
+      appendStatusItems(lines, `${labels.active} (${group.active.length})`, group.active)
+    }
+  }
+}
+
+function getDateStatusGroup(groups: Map<string, { completed: Todo[]; active: Todo[] }>, date: string) {
+  const group = groups.get(date)
+  if (group) {
+    return group
+  }
+
+  const nextGroup = { completed: [], active: [] }
+  groups.set(date, nextGroup)
+  return nextGroup
+}
+
+function appendStatusItems(lines: string[], statusLabel: string, todos: Todo[]) {
+  lines.push(`### ${statusLabel}`)
+  for (const todo of todos) {
+    lines.push(`- ${sanitizeTodoTitle(todo.title)}`)
+  }
+  lines.push('')
 }
 
 function groupTodosByDate(todos: Todo[]): TodoReportGroup[] {

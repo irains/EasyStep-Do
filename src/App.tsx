@@ -482,16 +482,13 @@ function App() {
           </div>
           <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-border/90 bg-card/95 shadow-[0_8px_20px_rgba(16,24,40,0.08)]">
             <CardHeader className="border-b border-border/80 px-3.5 pt-3.5 pb-2">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Sparkles className="size-3.5" />
-                    <span>{t('app.name')}</span>
-                  </div>
-                  <CardTitle className="text-lg">{t('app.subtitle')}</CardTitle>
-                  <CardDescription className="mt-1 text-xs">{t('app.description')}</CardDescription>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Sparkles className="size-3.5" />
+                  <span>{t('app.name')}</span>
                 </div>
-                <ModeToggle />
+                <div className="flex items-center gap-1">
+                  <ModeToggle />
                   <Button
                     type="button"
                     variant="ghost"
@@ -503,7 +500,10 @@ function App() {
                   >
                     <Settings className="size-4" />
                   </Button>
+                </div>
               </div>
+              <CardTitle className="mt-1 text-lg">{t('app.subtitle')}</CardTitle>
+              <CardDescription className="mt-1 whitespace-nowrap text-xs">{t('app.description')}</CardDescription>
 
 
               <div className="mt-2 grid gap-1">
@@ -685,21 +685,21 @@ function App() {
 
           <Card className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-border/90 bg-card/95 shadow-[0_8px_20px_rgba(16,24,40,0.08)]">
             <CardHeader className="px-4 py-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base">{t('todo.list')}</CardTitle>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setReportOpen(true)} className="h-7 px-2">
+              <div className="space-y-2">
+                <CardTitle className="text-base">{t('todo.list')}</CardTitle>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as TodoFilter)} className="min-w-0 flex-1">
+                    <TabsList>
+                      <TabsTrigger value="all">{t('todo.all')} {stats.total}</TabsTrigger>
+                      <TabsTrigger value="active">{t('todo.active')} {stats.active}</TabsTrigger>
+                      <TabsTrigger value="completed">{t('todo.completed')} {stats.completed}</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setReportOpen(true)} className="ml-auto h-9 shrink-0 px-3 text-xs">
                     <FileText className="size-3.5" />
                     {t('report.open')}
                   </Button>
                 </div>
-                <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as TodoFilter)}>
-                  <TabsList>
-                    <TabsTrigger value="all">{t('todo.all')} {stats.total}</TabsTrigger>
-                    <TabsTrigger value="active">{t('todo.active')} {stats.active}</TabsTrigger>
-                    <TabsTrigger value="completed">{t('todo.completed')} {stats.completed}</TabsTrigger>
-                  </TabsList>
-                </Tabs>
               </div>
             </CardHeader>
             <CardContent className="panel-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-0 pb-2">

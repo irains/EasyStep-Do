@@ -152,6 +152,7 @@
     "copyFailed": "Copy failed. Select the preview content and copy it manually.",
     "markdownHeading": "Work Report ({{range}})",
     "scopeNote": "Scope: grouped by task assigned date, including completed and follow-up tasks.",
+    "emptyAllMarkdown": "No tasks in this range.",
     "emptyCompletedMarkdown": "No completed tasks in this range.",
     "emptyActiveMarkdown": "No follow-up tasks in this range."
   },
