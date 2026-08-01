@@ -21,11 +21,19 @@ export type TodoReportModel = {
   }
 }
 
+export type ReportMarkdownTemplate = 'compact' | 'weekly' | 'monthly'
+
 export type ReportMarkdownLabels = {
   heading: string
   scopeNote: string
   completed: string
   active: string
+  weeklyCompleted: string
+  weeklyPlan: string
+  monthlyCompleted: string
+  monthlyFollowUp: string
+  risks: string
+  none: string
   emptyAll: string
   emptyCompleted: string
   emptyActive: string
@@ -61,12 +69,22 @@ export function buildReportModel(todos: Todo[], startDate: string, endDate: stri
 export function generateReportMarkdown(
   model: TodoReportModel,
   labels: ReportMarkdownLabels,
-  options: { includeActive: boolean },
+  options: { includeActive: boolean; template?: ReportMarkdownTemplate },
 ) {
   const lines: string[] = [`# ${labels.heading}`, '']
 
   if (model.totals.all === 0) {
     lines.push(labels.emptyAll)
+    return lines.join('\n').trimEnd()
+  }
+
+  if (options.template === 'weekly') {
+    appendWeeklyTemplate(lines, model, labels)
+    return lines.join('\n').trimEnd()
+  }
+
+  if (options.template === 'monthly') {
+    appendMonthlyTemplate(lines, model, labels)
     return lines.join('\n').trimEnd()
   }
 
@@ -82,6 +100,32 @@ export function getTodoDetailSummary(todo: Todo) {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 88)
+}
+
+function appendWeeklyTemplate(lines: string[], model: TodoReportModel, labels: ReportMarkdownLabels) {
+  appendFlatSection(lines, `${labels.weeklyCompleted} (${model.totals.completed})`, model.completed, labels.emptyCompleted)
+  appendFlatSection(lines, `${labels.weeklyPlan} (${model.totals.active})`, model.active, labels.emptyActive, true)
+  lines.push(`## ${labels.risks}`, '', labels.none, '')
+}
+
+function appendMonthlyTemplate(lines: string[], model: TodoReportModel, labels: ReportMarkdownLabels) {
+  appendFlatSection(lines, `${labels.monthlyCompleted} (${model.totals.completed})`, model.completed, labels.emptyCompleted)
+  appendFlatSection(lines, `${labels.monthlyFollowUp} (${model.totals.active})`, model.active, labels.emptyActive, true)
+}
+
+function appendFlatSection(lines: string[], heading: string, todos: Todo[], emptyLabel: string, includeDate = false) {
+  lines.push(`## ${heading}`, '')
+
+  if (todos.length === 0) {
+    lines.push(emptyLabel, '')
+    return
+  }
+
+  for (const todo of todos) {
+    const title = sanitizeTodoTitle(todo.title)
+    lines.push(includeDate ? `- [${todo.journal_date}] ${title}` : `- ${title}`)
+  }
+  lines.push('')
 }
 
 function appendDateStatusGroups(lines: string[], model: TodoReportModel, labels: ReportMarkdownLabels, includeActive: boolean) {

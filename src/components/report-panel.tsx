@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatLocalDate, getMonthRange, getWeekRange } from '@/lib/date'
-import { buildReportModel, generateReportMarkdown, type ReportMarkdownLabels } from '@/lib/report'
+import { buildReportModel, generateReportMarkdown, type ReportMarkdownLabels, type ReportMarkdownTemplate } from '@/lib/report'
 
 type ReportPreset = 'week' | 'month' | 'custom'
 type ReportView = 'summary' | 'details'
@@ -27,6 +27,7 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
   const { t } = useTranslation()
   const [preset, setPreset] = useState<ReportPreset>('month')
   const [view, setView] = useState<ReportView>('summary')
+  const [template, setTemplate] = useState<ReportMarkdownTemplate>('compact')
   const [anchorDate, setAnchorDate] = useState(now)
   const [customStartDate, setCustomStartDate] = useState(() => getMonthRange(now)[0])
   const [customEndDate, setCustomEndDate] = useState(() => getMonthRange(now)[1])
@@ -54,6 +55,12 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
       scopeNote: t('report.scopeNote'),
       completed: t('report.completed'),
       active: t('report.active'),
+      weeklyCompleted: t('report.weeklyCompleted'),
+      weeklyPlan: t('report.weeklyPlan'),
+      monthlyCompleted: t('report.monthlyCompleted'),
+      monthlyFollowUp: t('report.monthlyFollowUp'),
+      risks: t('report.risks'),
+      none: t('report.none'),
       emptyAll: t('report.emptyAllMarkdown'),
       emptyCompleted: t('report.emptyCompletedMarkdown'),
       emptyActive: t('report.emptyActiveMarkdown'),
@@ -61,8 +68,8 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
     [rangeLabel, t],
   )
   const markdown = useMemo(
-    () => (reportModel ? generateReportMarkdown(reportModel, markdownLabels, { includeActive: true }) : ''),
-    [markdownLabels, reportModel],
+    () => (reportModel ? generateReportMarkdown(reportModel, markdownLabels, { includeActive: true, template }) : ''),
+    [markdownLabels, reportModel, template],
   )
 
   useEffect(() => {
@@ -260,6 +267,22 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
 
             {view === 'summary' ? (
               <div className="p-3">
+                <div className="mb-3 flex flex-col gap-2 rounded-lg border border-border/55 bg-muted/15 p-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">{t('report.template')}</span>
+                  <Tabs value={template} onValueChange={(value) => setTemplate(value as ReportMarkdownTemplate)} className="w-full sm:w-auto">
+                    <TabsList className="h-8 w-full sm:w-auto">
+                      <TabsTrigger value="compact" className="flex-1 sm:min-w-[72px] sm:flex-none">
+                        {t('report.templateCompact')}
+                      </TabsTrigger>
+                      <TabsTrigger value="weekly" className="flex-1 sm:min-w-[72px] sm:flex-none">
+                        {t('report.templateWeekly')}
+                      </TabsTrigger>
+                      <TabsTrigger value="monthly" className="flex-1 sm:min-w-[72px] sm:flex-none">
+                        {t('report.templateMonthly')}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
                 <MarkdownPreview
                   value={markdown}
                   emptyLabel={t('report.emptyPreview')}
