@@ -12,6 +12,7 @@ import { buildReportModel, generateReportMarkdown, type ReportMarkdownLabels, ty
 
 type ReportPreset = 'week' | 'month' | 'custom'
 type ReportView = 'summary' | 'details'
+type ReportMarkdownMode = 'preview' | 'edit'
 
 type ReportPanelProps = {
   open: boolean
@@ -27,10 +28,13 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
   const { t } = useTranslation()
   const [preset, setPreset] = useState<ReportPreset>('month')
   const [view, setView] = useState<ReportView>('summary')
+  const [markdownMode, setMarkdownMode] = useState<ReportMarkdownMode>('preview')
   const [template, setTemplate] = useState<ReportMarkdownTemplate>('compact')
   const [anchorDate, setAnchorDate] = useState(now)
   const [customStartDate, setCustomStartDate] = useState(() => getMonthRange(now)[0])
   const [customEndDate, setCustomEndDate] = useState(() => getMonthRange(now)[1])
+  const [editableMarkdown, setEditableMarkdown] = useState('')
+  const [markdownEdited, setMarkdownEdited] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState('')
 
@@ -87,6 +91,7 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
     () => (reportModel ? generateReportMarkdown(reportModel, markdownLabels, { includeActive: true, template }) : ''),
     [markdownLabels, reportModel, template],
   )
+  const outputMarkdown = markdownEdited ? editableMarkdown : markdown
 
   useEffect(() => {
     if (!copied) return
@@ -99,11 +104,18 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
   const stats = reportModel?.totals ?? { all: 0, completed: 0, active: 0, daysWithCompleted: 0 }
   const canShiftRange = preset !== 'custom'
 
+  const resetMarkdownEdit = () => {
+    setMarkdownMode('preview')
+    setMarkdownEdited(false)
+    setEditableMarkdown('')
+  }
+
   const handlePresetChange = (value: string) => {
     const nextPreset = value as ReportPreset
     setPreset(nextPreset)
     setCopied(false)
     setCopyError('')
+    resetMarkdownEdit()
     if ((nextPreset === 'week' && template === 'monthly') || (nextPreset === 'month' && template === 'weekly')) {
       setTemplate('compact')
     }
@@ -115,12 +127,14 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
   const handleShiftRange = (direction: -1 | 1) => {
     setCopied(false)
     setCopyError('')
+    resetMarkdownEdit()
     setAnchorDate((prev) => (preset === 'week' ? shiftDate(prev, direction * 7) : shiftMonthDate(prev, direction)))
   }
 
   const handleResetRange = () => {
     setCopied(false)
     setCopyError('')
+    resetMarkdownEdit()
     setAnchorDate(now)
     const [nextStart, nextEnd] = getMonthRange(now)
     setCustomStartDate(nextStart)
@@ -128,12 +142,12 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
   }
 
   const handleCopy = async () => {
-    if (invalidRange || !markdown) {
+    if (invalidRange || !outputMarkdown) {
       return
     }
     setCopyError('')
     try {
-      await navigator.clipboard.writeText(markdown)
+      await navigator.clipboard.writeText(outputMarkdown)
       setCopied(true)
       setCopyError('')
     } catch {
@@ -229,6 +243,7 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
                       onChange={(event) => {
                         setCopied(false)
                         setCopyError('')
+                        resetMarkdownEdit()
                         setCustomStartDate(event.target.value || formatLocalDate(now))
                       }}
                       className="h-8 min-w-0 border-0 bg-transparent px-0 text-sm font-semibold text-foreground shadow-none focus-visible:ring-0"
@@ -244,6 +259,7 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
                       onChange={(event) => {
                         setCopied(false)
                         setCopyError('')
+                        resetMarkdownEdit()
                         setCustomEndDate(event.target.value || formatLocalDate(now))
                       }}
                       className="h-8 min-w-0 border-0 bg-transparent px-0 text-sm font-semibold text-foreground shadow-none focus-visible:ring-0"
@@ -278,7 +294,10 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
                     <span className="shrink-0">{t('report.template')}</span>
                     <select
                       value={template}
-                      onChange={(event) => setTemplate(event.target.value as ReportMarkdownTemplate)}
+                      onChange={(event) => {
+                        setTemplate(event.target.value as ReportMarkdownTemplate)
+                        resetMarkdownEdit()
+                      }}
                       className="h-8 rounded-md border border-border/60 bg-background/70 px-2 text-xs font-medium text-foreground outline-none transition-colors hover:bg-muted/30 focus:border-sky-500/50"
                     >
                       {templateOptions.map((option) => (
@@ -304,11 +323,59 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
 
             {view === 'summary' ? (
               <div className="p-3">
-                <MarkdownPreview
-                  value={markdown}
-                  emptyLabel={t('report.emptyPreview')}
-                  className="max-h-[58vh] min-h-[380px] border-0 bg-transparent p-0"
-                />
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {markdownEdited ? t('report.markdownEdited') : t('report.markdownAuto')}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      variant={markdownMode === 'preview' ? 'outline' : 'ghost'}
+                      size="sm"
+                      onClick={() => setMarkdownMode('preview')}
+                      className="h-7 px-2 text-xs"
+                    >
+                      {t('report.previewMarkdown')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={markdownMode === 'edit' ? 'outline' : 'ghost'}
+                      size="sm"
+                      onClick={() => {
+                        if (!markdownEdited) {
+                          setEditableMarkdown(markdown)
+                        }
+                        setMarkdownMode('edit')
+                      }}
+                      disabled={invalidRange || !markdown}
+                      className="h-7 px-2 text-xs"
+                    >
+                      {t('report.editMarkdown')}
+                    </Button>
+                    {markdownEdited && (
+                      <Button type="button" variant="ghost" size="sm" onClick={resetMarkdownEdit} className="h-7 px-2 text-xs">
+                        {t('report.resetMarkdown')}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {markdownMode === 'edit' ? (
+                  <textarea
+                    value={markdownEdited ? editableMarkdown : markdown}
+                    onChange={(event) => {
+                      setEditableMarkdown(event.target.value)
+                      setMarkdownEdited(true)
+                    }}
+                    className="markdown-scrollbar min-h-[380px] max-h-[58vh] w-full resize-none rounded-lg border-0 bg-transparent p-0 text-sm leading-6 text-foreground outline-none"
+                    spellCheck={false}
+                  />
+                ) : (
+                  <MarkdownPreview
+                    value={outputMarkdown}
+                    emptyLabel={t('report.emptyPreview')}
+                    className="max-h-[58vh] min-h-[380px] border-0 bg-transparent p-0"
+                  />
+                )}
               </div>
             ) : (
               reportModel && (
@@ -343,7 +410,7 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
               {copyError}
             </p>
           )}
-          <Button type="button" onClick={handleCopy} disabled={invalidRange || !markdown} className="w-full">
+          <Button type="button" onClick={handleCopy} disabled={invalidRange || !outputMarkdown} className="w-full">
             {copied ? <CheckCircle2 className="size-4" /> : <Copy className="size-4" />}
             {copied ? t('report.copied') : t('report.copyMarkdown')}
           </Button>
