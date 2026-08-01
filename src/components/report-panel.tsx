@@ -201,8 +201,8 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
             {preset === 'custom' && (
               <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-1">
                 <div className="grid gap-1 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                  <label className="grid gap-1 rounded-md bg-background/55 px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                    <span>{t('report.startDate')}</span>
+                  <label className="flex items-center gap-2 rounded-md bg-background/55 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    <span className="shrink-0">{t('report.startDate')}</span>
                     <Input
                       type="date"
                       value={customStartDate}
@@ -212,12 +212,12 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
                         setCopyError('')
                         setCustomStartDate(event.target.value || formatLocalDate(now))
                       }}
-                      className="h-8 border-0 bg-transparent px-0 text-sm font-semibold text-foreground shadow-none focus-visible:ring-0"
+                      className="h-8 min-w-0 border-0 bg-transparent px-0 text-sm font-semibold text-foreground shadow-none focus-visible:ring-0"
                     />
                   </label>
                   <span className="hidden text-xs text-muted-foreground sm:block">-</span>
-                  <label className="grid gap-1 rounded-md bg-background/55 px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                    <span>{t('report.endDate')}</span>
+                  <label className="flex items-center gap-2 rounded-md bg-background/55 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    <span className="shrink-0">{t('report.endDate')}</span>
                     <Input
                       type="date"
                       value={customEndDate}
@@ -227,7 +227,7 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
                         setCopyError('')
                         setCustomEndDate(event.target.value || formatLocalDate(now))
                       }}
-                      className="h-8 border-0 bg-transparent px-0 text-sm font-semibold text-foreground shadow-none focus-visible:ring-0"
+                      className="h-8 min-w-0 border-0 bg-transparent px-0 text-sm font-semibold text-foreground shadow-none focus-visible:ring-0"
                     />
                   </label>
                 </div>
