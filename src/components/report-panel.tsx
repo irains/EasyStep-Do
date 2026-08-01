@@ -253,36 +253,36 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
                     : t('report.summaryCompact', { total: stats.all, completed: stats.completed, active: stats.active })}
                 </p>
               </div>
-              <Tabs value={view} onValueChange={(value) => setView(value as ReportView)} className="w-full sm:w-auto">
-                <TabsList className="h-8 w-full sm:w-auto">
-                  <TabsTrigger value="summary" className="flex-1 sm:min-w-[88px] sm:flex-none">
-                    {t('report.summaryTab')}
-                  </TabsTrigger>
-                  <TabsTrigger value="details" className="flex-1 sm:min-w-[88px] sm:flex-none">
-                    {t('report.detailsTab')}
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+                {view === 'summary' && (
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="shrink-0">{t('report.template')}</span>
+                    <select
+                      value={template}
+                      onChange={(event) => setTemplate(event.target.value as ReportMarkdownTemplate)}
+                      className="h-8 rounded-md border border-border/60 bg-background/70 px-2 text-xs font-medium text-foreground outline-none transition-colors hover:bg-muted/30 focus:border-sky-500/50"
+                    >
+                      <option value="compact">{t('report.templateCompact')}</option>
+                      <option value="weekly">{t('report.templateWeekly')}</option>
+                      <option value="monthly">{t('report.templateMonthly')}</option>
+                    </select>
+                  </label>
+                )}
+                <Tabs value={view} onValueChange={(value) => setView(value as ReportView)} className="w-full sm:w-auto">
+                  <TabsList className="h-8 w-full sm:w-auto">
+                    <TabsTrigger value="summary" className="flex-1 sm:min-w-[88px] sm:flex-none">
+                      {t('report.summaryTab')}
+                    </TabsTrigger>
+                    <TabsTrigger value="details" className="flex-1 sm:min-w-[88px] sm:flex-none">
+                      {t('report.detailsTab')}
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </div>
 
             {view === 'summary' ? (
               <div className="p-3">
-                <div className="mb-3 flex flex-col gap-2 rounded-lg border border-border/55 bg-muted/15 p-2 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">{t('report.template')}</span>
-                  <Tabs value={template} onValueChange={(value) => setTemplate(value as ReportMarkdownTemplate)} className="w-full sm:w-auto">
-                    <TabsList className="h-8 w-full sm:w-auto">
-                      <TabsTrigger value="compact" className="flex-1 sm:min-w-[72px] sm:flex-none">
-                        {t('report.templateCompact')}
-                      </TabsTrigger>
-                      <TabsTrigger value="weekly" className="flex-1 sm:min-w-[72px] sm:flex-none">
-                        {t('report.templateWeekly')}
-                      </TabsTrigger>
-                      <TabsTrigger value="monthly" className="flex-1 sm:min-w-[72px] sm:flex-none">
-                        {t('report.templateMonthly')}
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
                 <MarkdownPreview
                   value={markdown}
                   emptyLabel={t('report.emptyPreview')}
