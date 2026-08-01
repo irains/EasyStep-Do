@@ -42,6 +42,22 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
     return [customStartDate, customEndDate]
   }, [customEndDate, customStartDate, monthEndDate, monthStartDate, preset, weekEnd, weekStart])
 
+  const templateOptions = useMemo<Array<{ value: ReportMarkdownTemplate; label: string }>>(() => {
+    const options: Array<{ value: ReportMarkdownTemplate; label: string }> = [
+      { value: 'compact', label: t('report.templateCompact') },
+    ]
+
+    if (preset === 'week') {
+      options.push({ value: 'weekly', label: t('report.templateWeekly') })
+    }
+
+    if (preset === 'month') {
+      options.push({ value: 'monthly', label: t('report.templateMonthly') })
+    }
+
+    return options
+  }, [preset, t])
+
   const invalidRange = startDate > endDate
   const reportModel = useMemo(
     () => (invalidRange ? null : buildReportModel(todos, startDate, endDate)),
@@ -88,6 +104,9 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
     setPreset(nextPreset)
     setCopied(false)
     setCopyError('')
+    if ((nextPreset === 'week' && template === 'monthly') || (nextPreset === 'month' && template === 'weekly') || nextPreset === 'custom') {
+      setTemplate('compact')
+    }
     if (nextPreset !== 'custom') {
       setAnchorDate(now)
     }
@@ -262,9 +281,11 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
                       onChange={(event) => setTemplate(event.target.value as ReportMarkdownTemplate)}
                       className="h-8 rounded-md border border-border/60 bg-background/70 px-2 text-xs font-medium text-foreground outline-none transition-colors hover:bg-muted/30 focus:border-sky-500/50"
                     >
-                      <option value="compact">{t('report.templateCompact')}</option>
-                      <option value="weekly">{t('report.templateWeekly')}</option>
-                      <option value="monthly">{t('report.templateMonthly')}</option>
+                      {templateOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 )}
