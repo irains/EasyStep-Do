@@ -47,11 +47,11 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
       { value: 'compact', label: t('report.templateCompact') },
     ]
 
-    if (preset === 'week') {
+    if (preset === 'week' || preset === 'custom') {
       options.push({ value: 'weekly', label: t('report.templateWeekly') })
     }
 
-    if (preset === 'month') {
+    if (preset === 'month' || preset === 'custom') {
       options.push({ value: 'monthly', label: t('report.templateMonthly') })
     }
 
@@ -104,7 +104,7 @@ export function ReportPanel({ open, todos, now, locale, pendingTodoId = null, on
     setPreset(nextPreset)
     setCopied(false)
     setCopyError('')
-    if ((nextPreset === 'week' && template === 'monthly') || (nextPreset === 'month' && template === 'weekly') || nextPreset === 'custom') {
+    if ((nextPreset === 'week' && template === 'monthly') || (nextPreset === 'month' && template === 'weekly')) {
       setTemplate('compact')
     }
     if (nextPreset !== 'custom') {
