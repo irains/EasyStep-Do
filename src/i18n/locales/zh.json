@@ -14,7 +14,10 @@
     "viewMode": "视图模式",
     "addDate": "新增日期",
     "today": "今天",
-    "progress": "完成进度"
+    "progress": "完成进度",
+    "selectedTasks": "当日任务",
+    "selectedTasksEmpty": "这一天还没有任务",
+    "moreSelectedTasks": "另有 {{count}} 项任务"
   },
   "tips": {
     "title": "快捷提示",

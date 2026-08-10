@@ -18,7 +18,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileText, Search, Settings, Sparkles, Trash2, X } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileText, Search, Settings, Trash2, X } from 'lucide-react'
 
 import {
   addTodo,
@@ -39,7 +39,6 @@ import { ReportPanel } from '@/components/report-panel'
 import { SettingsPanel } from '@/components/settings-panel'
 import { SyncStatus } from '@/components/sync-status'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -232,6 +231,11 @@ function App() {
     const rate = total === 0 ? 0 : Math.round((completed / total) * 100)
     return { total, active, completed, rate }
   }, [scopedTodos])
+
+  const selectedDateTodos = useMemo(
+    () => todos.filter((todo) => todo.journal_date === composeDate).toSorted((a, b) => a.sort_order - b.sort_order),
+    [composeDate, todos],
+  )
 
   const calendarDays = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth])
   const calendarStatusByDate = useMemo(() => {
@@ -441,8 +445,8 @@ function App() {
     return t('time.evening')
   }, [now, t])
 
-  const scopeLabel = scope === 'all' ? t('scope.all') : scope === 'week' ? t('scope.week') : t('scope.date')
   const canReorder = scope === 'date' && !searchActive
+  const scopeLabel = scope === 'all' ? t('scope.all') : scope === 'week' ? t('scope.week') : t('scope.date')
   const scopeTextClass = scope === 'all' ? 'text-sky-500 dark:text-sky-400' : scope === 'week' ? 'text-violet-500 dark:text-violet-400' : 'text-amber-500 dark:text-amber-400'
   const progressTextClass =
     stats.rate === 100
@@ -528,263 +532,281 @@ function App() {
         </div>
       )}
 
-      <div className="mx-auto grid h-full min-h-0 w-full max-w-[1500px] gap-1.5 md:grid-cols-[240px_minmax(0,1fr)]">
-          <aside className="flex min-h-0 flex-col gap-1.5">
-          <div className="shrink-0">
-            <div className="rounded-lg border border-border/80 bg-background/70 px-2.5 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
-              <div className="flex items-center justify-center gap-2 border-b border-border/70 pb-1.5 text-center">
-                <p className="text-[20px] font-bold leading-6 text-foreground [font-variant-numeric:tabular-nums]">
-                  {nowTimeLabel}
-                </p>
-                <span className="inline-flex h-5.5 items-center rounded-full border border-border/65 bg-muted/35 px-2 text-[12px] font-medium text-muted-foreground">
-                  {nowPeriodLabel}
-                </span>
+      <div className="mx-auto grid h-full min-h-0 w-full max-w-[1480px] gap-3 md:grid-cols-[252px_minmax(0,1fr)]">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.07)]">
+          <div className="shrink-0 px-4 pt-4 pb-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-semibold text-foreground">{t('app.name')}</p>
+                  <span className="inline-flex h-5 items-center rounded-full bg-muted/65 px-2 text-[11px] font-medium text-muted-foreground">
+                    {nowPeriodLabel}
+                  </span>
+                </div>
+                <p className="mt-1 truncate text-[11px] text-muted-foreground">{t('app.description')}</p>
               </div>
-              <p className="pt-1.5 text-center text-[18px] font-bold leading-5 text-foreground [font-variant-numeric:tabular-nums]">
+              <div className="flex shrink-0 items-center gap-1">
+                <ModeToggle />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSyncSettingsOpen(true)}
+                  aria-label={t('settings.title')}
+                  title={t('settings.title')}
+                  className="size-8"
+                >
+                  <Settings className="size-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-[30px] font-semibold leading-none tracking-tight text-foreground [font-variant-numeric:tabular-nums]">
+                {nowTimeLabel}
+              </p>
+              <p className="mt-2 text-xs font-medium text-muted-foreground [font-variant-numeric:tabular-nums]">
                 {nowDateLabel}
-                <span className="ml-2 text-[18px] font-bold text-foreground">{nowWeekdayLabel}</span>
+                <span className="ml-2 text-foreground/80">{nowWeekdayLabel}</span>
               </p>
             </div>
           </div>
-          <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-border/90 bg-card/95 shadow-[0_8px_20px_rgba(16,24,40,0.08)]">
-            <CardHeader className="border-b border-border/80 px-3.5 pt-3.5 pb-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Sparkles className="size-3.5" />
-                  <span>{t('app.name')}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <ModeToggle />
+
+          <div className="px-3 pb-3">
+            <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted/45 p-1">
+              <SidebarButton active={scope === 'all'} onClick={() => setScope('all')}>
+                {t('scope.all')}
+              </SidebarButton>
+              <SidebarButton active={scope === 'week'} onClick={() => setScope('week')}>
+                {t('scope.week')}
+              </SidebarButton>
+              <SidebarButton active={scope === 'date'} onClick={() => setScope('date')}>
+                {t('scope.date')}
+              </SidebarButton>
+            </div>
+          </div>
+
+          <div className="panel-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3">
+            <div className="rounded-xl bg-background/50 p-2">
+              <div className="mb-2 flex items-center justify-between gap-2 px-1">
+                <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-foreground">
+                  <CalendarDays className="size-4 text-muted-foreground" />
+                  <span className="truncate">{monthLabel}</span>
+                </p>
+                <div className="flex items-center gap-0.5">
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => setSyncSettingsOpen(true)}
-                    aria-label={t('settings.title')}
-                    title={t('settings.title')}
-                    className="size-8"
+                    onClick={() => setVisibleMonth((prev) => shiftMonth(prev, -1))}
+                    className="size-7"
                   >
-                    <Settings className="size-4" />
+                    <ChevronLeft className="size-4" />
                   </Button>
-                </div>
-              </div>
-              <CardTitle className="mt-1 text-lg">{t('app.subtitle')}</CardTitle>
-              <CardDescription className="mt-1 whitespace-nowrap text-xs">{t('app.description')}</CardDescription>
-
-
-              <div className="mt-2 grid gap-1">
-                <SidebarButton active={scope === 'all'} onClick={() => setScope('all')}>
-                  {t('scope.all')}
-                </SidebarButton>
-                <SidebarButton active={scope === 'week'} onClick={() => setScope('week')}>
-                  {t('scope.week')}
-                </SidebarButton>
-                <SidebarButton active={scope === 'date'} onClick={() => setScope('date')}>
-                  {t('scope.date')}
-                </SidebarButton>
-              </div>
-            </CardHeader>
-
-            <CardContent className="flex min-h-0 flex-1 flex-col space-y-1.5 overflow-hidden px-3 py-2">
-              <div className="rounded-lg border border-border bg-muted/40 p-1">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <p className="flex items-center gap-1.5 text-sm font-medium">
-                    <CalendarDays className="size-4 text-muted-foreground" />
-                    {monthLabel}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setVisibleMonth((prev) => shiftMonth(prev, -1))}
-                    >
-                      <ChevronLeft className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setVisibleMonth((prev) => shiftMonth(prev, 1))}
-                    >
-                      <ChevronRight className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="mb-0.5 grid grid-cols-7 text-center text-[10px] text-muted-foreground">
-                  {WEEK_KEYS.map((key) => (
-                    <span key={key}>{t(`week.${key}`)}</span>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-0.5">
-                  {calendarDays.map((day) => {
-                    const dayStatus = calendarStatusByDate.get(day.key)
-                    const hasCompleted = Boolean(dayStatus?.completed)
-                    const hasActive = Boolean(dayStatus?.active)
-
-                    return (
-                      <button
-                        key={day.key}
-                        type="button"
-                        onClick={() => {
-                          setScope('date')
-                          setComposeDate(day.key)
-                          setVisibleMonth(monthStart(day.date))
-                        }}
-                        className={`relative flex h-7 flex-col items-center justify-center rounded text-[10px] leading-none transition-colors ${
-                          day.key === composeDate
-                            ? 'bg-foreground text-background'
-                            : day.inCurrentMonth
-                              ? 'hover:bg-muted'
-                              : 'text-muted-foreground/50 hover:bg-muted/70'
-                        } ${day.isToday && day.key !== composeDate ? 'ring-1 ring-foreground/35' : ''}`}
-                      >
-                        <span>{day.date.getDate()}</span>
-                        {(hasCompleted || hasActive) && (
-                          <span className="absolute bottom-0.5 flex items-center justify-center gap-0.5">
-                            {hasCompleted && <span className="h-1 w-1 rounded-full bg-emerald-400" />}
-                            {hasActive && <span className="h-1 w-1 rounded-full bg-amber-400" />}
-                          </span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="flex flex-1 flex-col gap-1 overflow-hidden">
-                <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-1.5 py-1.5 text-[11px] text-muted-foreground">
-                  <p className="mb-1 font-medium text-foreground/80">{t('context.title')}</p>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/55 px-2 py-1">
-                      <span>{t('context.viewMode')}</span>
-                      <span className={`font-medium ${scopeTextClass}`}>{scopeLabel}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/55 px-2 py-1">
-                      <span>{t('context.addDate')}</span>
-                      <span className="font-medium text-foreground">{composeDate === formatLocalDate(now) ? t('context.today') : composeDate}</span>
-                    </div>
-                    <div className="rounded-md border border-border/60 bg-background/55 px-2 py-1">
-                      <div className="mb-1 flex items-center justify-between">
-                        <span>{t('context.progress')}</span>
-                        <span className={`font-medium ${progressTextClass}`}>{stats.rate}%</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-border/60">
-                        <div
-                          className={`h-full rounded-full transition-all ${progressBarClass}`}
-                          style={{ width: `${Math.max(stats.rate, 6)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-md border border-border/60 bg-background/55 px-1.5 py-1 text-[11px] text-muted-foreground">
-                  <p className="font-medium text-foreground/80">{t('tips.title')}</p>
-                  <ul className="mt-1 space-y-0.5 leading-4">
-                    <li>{t('tips.expand')}</li>
-                    <li>{t('tips.markdown')}</li>
-                  </ul>
-                </div>
-
-                <SyncStatus />
-              </div>
-            </CardContent>
-          </Card>
-        </aside>
-
-        <section className="flex min-h-0 min-w-0 flex-col gap-1 overflow-hidden">
-          <Card className="border-border/90 bg-card/95 shadow-[0_6px_16px_rgba(16,24,40,0.06)]">
-            <CardContent className="py-1.5">
-              <div className="mb-1 flex items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/25 px-2.5 py-1">
-                <div className="min-w-0 flex items-center gap-2">
-                  <p className="shrink-0 text-sm font-semibold text-foreground">{t('composer.title')}</p>
-                  <span className="min-w-0 truncate text-[11px] text-muted-foreground">
-                    {t('composer.hint')}
-                  </span>
-                </div>
-                <p className="shrink-0 text-xs text-muted-foreground">{composeDate === formatLocalDate(now) ? `${t('context.today')} ${composeDate.slice(5)}` : composeDate}</p>
-              </div>
-
-              <form
-                className="grid gap-1.5"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void handleSubmit()
-                }}
-              >
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                    placeholder={t('composer.placeholder')}
-                    maxLength={200}
-                    disabled={submitting}
-                    className="h-9"
-                  />
-                  <Button type="submit" disabled={submitting} className="h-9 min-w-20">
-                    {submitting ? t('composer.adding') : t('composer.add')}
-                  </Button>
-                </div>
-
-                <div className="flex items-center justify-between gap-2">
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    onClick={() => setShowComposerDetail((prev) => !prev)}
-                    disabled={submitting}
-                    className="h-7 px-2 text-xs"
+                    size="icon"
+                    onClick={() => setVisibleMonth((prev) => shiftMonth(prev, 1))}
+                    className="size-7"
                   >
-                    {showComposerDetail ? t('composer.collapseDetail') : t('composer.toggleDetail')}
+                    <ChevronRight className="size-4" />
                   </Button>
-                  <p className="text-xs text-muted-foreground">{t('composer.dateHint')}</p>
                 </div>
+              </div>
 
-                {showComposerDetail && (
-                  <div className="max-h-[58vh] overflow-y-auto pr-1">
-                    <MarkdownEditor
-                      value={detailMd}
-                      onChange={setDetailMd}
-                      placeholder={t('composer.detailPlaceholder')}
-                      disabled={submitting}
-                    />
-                  </div>
-                )}
-              </form>
-              {error && (
-                <p className="mt-1.5 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs text-red-500">
-                  {error}
+              <div className="mb-1 grid grid-cols-7 text-center text-[10px] font-medium text-muted-foreground/85">
+                {WEEK_KEYS.map((key) => (
+                  <span key={key}>{t(`week.${key}`)}</span>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-0.5">
+                {calendarDays.map((day) => {
+                  const dayStatus = calendarStatusByDate.get(day.key)
+                  const hasCompleted = Boolean(dayStatus?.completed)
+                  const hasActive = Boolean(dayStatus?.active)
+
+                  return (
+                    <button
+                      key={day.key}
+                      type="button"
+                      onClick={() => {
+                        setScope('date')
+                        setComposeDate(day.key)
+                        setVisibleMonth(monthStart(day.date))
+                      }}
+                      className={`relative flex h-7 flex-col items-center justify-center rounded-md text-[10px] leading-none transition-colors ${
+                        day.key === composeDate
+                          ? 'bg-foreground text-background'
+                          : day.inCurrentMonth
+                            ? 'text-foreground/85 hover:bg-muted/80'
+                            : 'text-muted-foreground/45 hover:bg-muted/60'
+                      } ${day.isToday && day.key !== composeDate ? 'ring-1 ring-foreground/25' : ''}`}
+                    >
+                      <span>{day.date.getDate()}</span>
+                      {(hasCompleted || hasActive) && (
+                        <span className="absolute bottom-0.5 flex items-center justify-center gap-0.5">
+                          {hasCompleted && <span className="h-1 w-1 rounded-full bg-emerald-400" />}
+                          {hasActive && <span className="h-1 w-1 rounded-full bg-amber-400" />}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border/45 px-1 pt-3 text-[11px] text-muted-foreground">
+              <div className="flex min-w-0 items-center justify-between gap-2">
+                <span>{t('context.viewMode')}</span>
+                <span className={`truncate font-medium ${scopeTextClass}`}>{scopeLabel}</span>
+              </div>
+              <div className="flex min-w-0 items-center justify-between gap-2">
+                <span>{t('context.addDate')}</span>
+                <span className="truncate font-medium text-foreground">
+                  {composeDate === formatLocalDate(now) ? t('context.today') : composeDate}
+                </span>
+              </div>
+              <div className="col-span-2">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span>{t('context.progress')}</span>
+                  <span className={`font-medium ${progressTextClass}`}>{stats.rate}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-border/55">
+                  <div
+                    className={`h-full rounded-full transition-all ${progressBarClass}`}
+                    style={{ width: `${stats.rate}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-auto px-1 pt-4">
+              <div className="mb-2 flex items-center justify-between gap-2 text-[11px]">
+                <span className="font-medium text-foreground/80">{t('context.selectedTasks')}</span>
+                <span className="text-muted-foreground">{selectedDateTodos.length}</span>
+              </div>
+              {selectedDateTodos.length > 0 ? (
+                <ul className="space-y-1">
+                  {selectedDateTodos.slice(0, 3).map((todo) => (
+                    <li key={todo.id} className="flex min-w-0 items-center gap-1.5 text-[11px]">
+                      <span
+                        className={`size-1.5 shrink-0 rounded-full ${todo.completed ? 'bg-emerald-400' : 'bg-amber-400'}`}
+                        aria-hidden="true"
+                      />
+                      <span className={`truncate ${todo.completed ? 'text-muted-foreground line-through' : 'text-foreground/80'}`}>
+                        {todo.title}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[11px] leading-5 text-muted-foreground/80">{t('context.selectedTasksEmpty')}</p>
+              )}
+              {selectedDateTodos.length > 3 && (
+                <p className="mt-1.5 text-[10px] text-muted-foreground">
+                  {t('context.moreSelectedTasks', { count: selectedDateTodos.length - 3 })}
                 </p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-border/90 bg-card/95 shadow-[0_8px_20px_rgba(16,24,40,0.08)]">
-            <CardHeader className="px-4 py-2">
-              <div className="space-y-2">
-                <CardTitle className="text-base">{t('todo.list')}</CardTitle>
-                <div className="flex min-w-0 items-center gap-2">
-                  <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as TodoFilter)} className="min-w-0 flex-1">
-                    <TabsList>
-                      <TabsTrigger value="all">{t('todo.all')} {stats.total}</TabsTrigger>
-                      <TabsTrigger value="active">{t('todo.active')} {stats.active}</TabsTrigger>
-                      <TabsTrigger value="completed">{t('todo.completed')} {stats.completed}</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setReportOpen(true)} className="ml-auto h-9 shrink-0 px-3 text-xs">
-                    <FileText className="size-3.5" />
-                    {t('report.open')}
-                  </Button>
+          <div className="shrink-0 border-t border-border/45 px-3 py-2">
+            <SyncStatus />
+          </div>
+        </aside>
+
+        <section className="flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden">
+          <div className="shrink-0 rounded-2xl border border-border/65 bg-card/90 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">{t('composer.title')}</p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{t('composer.hint')}</p>
+              </div>
+              <p className="shrink-0 rounded-full bg-muted/55 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                {composeDate === formatLocalDate(now) ? `${t('context.today')} ${composeDate.slice(5)}` : composeDate}
+              </p>
+            </div>
+
+            <form
+              className="mt-3 grid gap-2"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleSubmit()
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <Input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder={t('composer.placeholder')}
+                  maxLength={200}
+                  disabled={submitting}
+                  className="h-9 border-border/70 bg-background/70"
+                />
+                <Button type="submit" disabled={submitting} className="h-9 min-w-20">
+                  {submitting ? t('composer.adding') : t('composer.add')}
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowComposerDetail((prev) => !prev)}
+                  disabled={submitting}
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  {showComposerDetail ? t('composer.collapseDetail') : t('composer.toggleDetail')}
+                </Button>
+                <p className="text-xs text-muted-foreground">{t('composer.dateHint')}</p>
+              </div>
+
+              {showComposerDetail && (
+                <div className="max-h-[58vh] overflow-y-auto pr-1">
+                  <MarkdownEditor
+                    value={detailMd}
+                    onChange={setDetailMd}
+                    placeholder={t('composer.detailPlaceholder')}
+                    disabled={submitting}
+                  />
                 </div>
-                <div className="relative">
+              )}
+            </form>
+            {error && (
+              <p className="mt-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs text-red-500">
+                {error}
+              </p>
+            )}
+          </div>
+
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/65 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.07)]">
+            <div className="shrink-0 border-b border-border/50 px-4 pt-3 pb-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold leading-6 text-foreground">{t('todo.list')}</h2>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {t('report.summaryCompact', { total: stats.total, completed: stats.completed, active: stats.active })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 flex min-w-0 items-center gap-2">
+                <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as TodoFilter)} className="w-auto shrink-0">
+                  <TabsList className="border-0 bg-muted/45">
+                    <TabsTrigger value="all">{t('todo.all')} {stats.total}</TabsTrigger>
+                    <TabsTrigger value="active">{t('todo.active')} {stats.active}</TabsTrigger>
+                    <TabsTrigger value="completed">{t('todo.completed')} {stats.completed}</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <div className="relative min-w-0 flex-1">
                   <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground/75" />
                   <Input
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder={t('todo.searchPlaceholder')}
-                    className="h-8 pr-8 pl-8 text-sm"
+                    className="h-9 border-border/70 bg-background/70 pr-8 pl-8 text-sm"
                   />
                   {searchQuery && (
                     <button
@@ -798,9 +820,13 @@ function App() {
                     </button>
                   )}
                 </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => setReportOpen(true)} className="h-9 shrink-0 px-3 text-xs">
+                  <FileText className="size-3.5" />
+                  {t('report.open')}
+                </Button>
               </div>
-            </CardHeader>
-            <CardContent className="panel-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-0 pb-2">
+            </div>
+            <div className="panel-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-3">
               {loading ? (
                 <p className="py-5 text-sm text-muted-foreground">{t('todo.loading')}</p>
               ) : filteredTodos.length === 0 ? (
@@ -811,7 +837,7 @@ function App() {
                     items={filteredTodos.map((todo) => todo.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <ul className="grid gap-1.5 pr-1">
+                    <ul className="grid gap-1.5">
                       {filteredTodos.map((todo) => (
                         <TodoRow
                           key={todo.id}
@@ -832,11 +858,12 @@ function App() {
                   </SortableContext>
                 </DndContext>
               ) : (
-                <div className="grid gap-3 pr-1">
+                <div className="grid gap-4">
                   {groupedFilteredTodos.map((group) => (
                     <section key={group.date} className="grid gap-1.5">
-                      <div className="flex items-center justify-between border-b border-border/45 pb-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="font-medium text-foreground/80">{group.date}</span>
+                        <span className="h-px min-w-4 flex-1 bg-border/45" />
                         <span>{group.todos.length}</span>
                       </div>
                       <ul className="grid gap-1.5">
@@ -861,8 +888,8 @@ function App() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </section>
       </div>
     </main>
@@ -913,12 +940,12 @@ function TodoRow({
     <li
       ref={setNodeRef}
       style={style}
-      className={`min-w-0 overflow-hidden rounded-lg border border-border bg-background/85 transition-all ${
-        isDragging ? 'shadow-md' : 'hover:bg-muted/40'
+      className={`group min-w-0 overflow-hidden rounded-xl border border-border/55 bg-background/70 transition-all ${
+        isDragging ? 'shadow-md' : 'hover:border-border/80 hover:bg-muted/30'
       }`}
     >
-      <div className="px-2.5 py-1.5">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2.5">
           <div
             {...(canReorder && !rowDisabled && !editing ? attributes : {})}
             {...(canReorder && !rowDisabled && !editing ? listeners : {})}
@@ -946,23 +973,23 @@ function TodoRow({
                 <p className={`truncate text-sm font-medium ${todo.completed ? 'text-muted-foreground line-through' : ''}`}>
                   {todo.title}
                 </p>
-                <div className="mt-1 flex items-center gap-1.5 text-[10px]">
-                  <span className="shrink-0 rounded border border-border/40 bg-muted/25 px-1.5 py-px text-[10px] tabular-nums text-muted-foreground/80 [font-variant-numeric:tabular-nums]">
+                <div className="mt-1.5 flex items-center gap-1.5 text-[10px]">
+                  <span className="shrink-0 rounded-md bg-muted/35 px-1.5 py-px text-[10px] tabular-nums text-muted-foreground/80 [font-variant-numeric:tabular-nums]">
                     {todo.journal_date}
                   </span>
                   {todo.detail_md ? (
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium transition-colors ${
+                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium transition-colors ${
                         expanded
-                          ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                          : 'border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400'
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-sky-500/10 text-sky-600 dark:text-sky-400'
                       }`}
                     >
                       {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
                       {expanded ? t('todo.expanded') : t('todo.expandable')}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/35 px-2 py-0.5 text-muted-foreground/90">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-muted/35 px-2 py-0.5 text-muted-foreground/90">
                       <FileText className="size-3 opacity-75" />
                       {t('todo.noDetail')}
                     </span>
@@ -997,7 +1024,7 @@ function TodoRow({
                 </Button>
               </div>
             ) : (
-              <div className="inline-flex overflow-hidden rounded-md border border-border/70">
+              <div className="inline-flex overflow-hidden rounded-lg border border-border/55 bg-background/70 opacity-80 transition-opacity group-hover:opacity-100">
                 <Button
                   type="button"
                   variant="ghost"
@@ -1056,10 +1083,10 @@ function SidebarButton({ active, onClick, children }: SidebarButtonProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-8 w-full items-center rounded-md px-2.5 text-left text-sm transition-colors ${
+      className={`flex h-8 w-full items-center justify-center rounded-lg px-2 text-xs font-medium transition-colors ${
         active
-          ? 'bg-foreground text-background shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          ? 'bg-background text-foreground shadow-sm'
+          : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
       }`}
     >
       {children}

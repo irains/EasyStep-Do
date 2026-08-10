@@ -14,7 +14,10 @@
     "viewMode": "View Mode",
     "addDate": "New Task Date",
     "today": "Today",
-    "progress": "Progress"
+    "progress": "Progress",
+    "selectedTasks": "Selected Day",
+    "selectedTasksEmpty": "No tasks on this day",
+    "moreSelectedTasks": "{{count}} more tasks"
   },
   "tips": {
     "title": "Quick Tips",
