@@ -656,18 +656,12 @@ function App() {
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border/45 px-1 pt-3 text-[11px] text-muted-foreground">
+            <div className="mt-3 border-t border-border/45 px-1 pt-3 text-[11px] text-muted-foreground">
               <div className="flex min-w-0 items-center justify-between gap-2">
                 <span>{t('context.viewMode')}</span>
                 <span className={`truncate font-medium ${scopeTextClass}`}>{scopeLabel}</span>
               </div>
-              <div className="flex min-w-0 items-center justify-between gap-2">
-                <span>{t('context.addDate')}</span>
-                <span className="truncate font-medium text-foreground">
-                  {composeDate === formatLocalDate(now) ? t('context.today') : composeDate}
-                </span>
-              </div>
-              <div className="col-span-2">
+              <div className="mt-2">
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <span>{t('context.progress')}</span>
                   <span className={`font-medium ${progressTextClass}`}>{stats.rate}%</span>
